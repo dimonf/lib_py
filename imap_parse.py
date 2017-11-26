@@ -92,3 +92,4 @@ class FetchEmail():
         return: tuple (name, address). Eg. ('John Doe', 'jdoe@example.com')
         """
         return email.utils.parseaddr(email_address)
+
