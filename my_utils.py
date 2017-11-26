@@ -239,24 +239,19 @@ def d2obj(d):
     return obj
 
 
+def pd_infect():
+    '''extend standard pandas.DataFrame object with drill_down functionality.
+       restrictions:
+           a. multiple values for 'values' parameter of _pivot_table are not supported 
+    '''
 
+    pd.DataFrame.pivotd = _pivot_table
+    #pd.DataFrame.drill = _drill
+    pd.DataFrame.rr = _regex_select
+    pd.DataFrame.rloc = _rloc
+    #pd.DataFrame.ls = _list_records
+    pd.DataFrame.ls = partialmethod(_list_records, tag='short')
+    pd.DataFrame.ll = partialmethod(_list_records, tag='long')
 
-########################## RUN SECTION ###################
-'''extend standard pandas.DataFrame object with drill_down functionality.
-   restrictions:
-       a. multiple values for 'values' parameter of _pivot_table are not supported
-'''
-
-pd.DataFrame.pivotd = _pivot_table
-#pd.DataFrame.drill = _drill
-pd.DataFrame.rr = _regex_select
-pd.DataFrame.rloc = _rloc
-#pd.DataFrame.ls = _list_records
-pd.DataFrame.ls = partialmethod(_list_records, tag='short')
-pd.DataFrame.ll = partialmethod(_list_records, tag='long')
-
-#pd.ll = property(partialmethod(_list_records, tag='long'), partialmethod(_list_records, tag='long'))
-#pd.ls = property(partialmethod(_list_records, tag='short'), partialmethod(_list_records, tag='short'))
-
-
-########################################################
+    #pd.ll = property(partialmethod(_list_records, tag='long'), partialmethod(_list_records, tag='long'))
+    #pd.ls = property(partialmethod(_list_records, tag='short'), partialmethod(_list_records, tag='short'))
