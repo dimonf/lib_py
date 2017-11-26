@@ -258,4 +258,5 @@ pd.DataFrame.ll = partialmethod(_list_records, tag='long')
 #pd.ll = property(partialmethod(_list_records, tag='long'), partialmethod(_list_records, tag='long'))
 #pd.ls = property(partialmethod(_list_records, tag='short'), partialmethod(_list_records, tag='short'))
 
+
 ########################################################
