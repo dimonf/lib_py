@@ -1,0 +1,15 @@
+source	date	period	id	uuid	ccenter	account	group	sub1	sub2	dtct	curr	amount	usd	narr
+Dorson Ltd.	2015-03-23	2015-1-d	34606:1-2	4EF57AA2-84F3-11E3-B348-17231DC8241C	Isle of Man office	24	exp	Isle of Man office	moblie phones	Dt	EUR	10.82	11.82	MTN Charges for November 2015 (line:25 000 501) - 151223077511. 
+Vorshteiner Inc	2015-03-23	2015-1-d	VST-006-0001:1-3	                                    	Container	26	exp	Vorshteiner Inc	Bank Charges	Dt	USD	17	17	C. Stew-Croo B.V.; U1512240008. regular bank charge: USD 1150
+Vorshteiner Inc	2015-03-23	2015-1-d	VST-006-0002:1-3	                                    	Container	26	exp	Vorshteiner Inc	Bank Charges	Dt	USD	23	23	Marvel Mariner Fze; RFB/PAYMENT AGAINST THE INV U10x52    0015 DT 29 12 2013. regular bank charge: USD 28990
+Dorson Ltd.	2015-03-23	2015-1-d	FOR-003-0001:1-3	                                    	Container	26	exp	Dorson Ltd.	Bank Charges	Dt	USD	6	6	Irland J.F.VIINAVIA AS; INVOICES F19181 F25x21 F1    512100004 F1512100007 ISN 001. regular bank charge: USD 568
+Dorson Ltd.	2015-03-23	2015-1-d	34609:1-2	D3742818-BB09-11E3-9EB9-132D4C9D021D	Isle of Man office	24	exp	Isle of Man office	communication	Dt	EUR	69.65	75.72	CYTA for November 2015. F.LTD
+Dorson Ltd.	2015-03-23	2015-1-d	34609:1-3	A5680282-1C61-11E4-AA6B-A7D74BBAC1E5	External	24	exp	External	moblie phones	Dt	EUR	37.61	40.89	CYTA for November 2015. DORSON LTD 99344198 +
+Dorson Ltd.	2015-03-23	2015-1-d	34609:1-4	A56802A0-1C61-11E4-AA6B-A7D74BBAC1E5	External	24	exp	External	moblie phones	Dt	EUR	17.36	18.87	CYTA for November 2015. DORSON LTD 99652851 +
+Dorson Ltd.	2015-03-23	2015-1-d	34609:1-7	0E8957DA-2CF1-11E4-AA6B-A7D74BBAC1E5	External	24	exp	External	moblie phones	Dt	EUR	218.93	238	CYTA for November 2015. Dasil Washington 99540120 +
+Atomoto Ltd.	2015-03-23	2015-1-d	34614:1-1	0F83DA32-352B-11E5-8538-448F37EDC45A	Holding	26	exp	Atomoto Ltd.	Bank Charges	Dt	RUB	84.61	1.31	Interest. Debit Int per 31.12.2015
+Atomoto Ltd.	2015-03-23	2015-1-d	34614:2-1	                                    	Holding	26	exp	Atomoto Ltd.	Bank Charges	Dt	RUB	10.97	0.17	Interest. Overdraft Int per 31.12.2015
+Cypress Investments Ltd.	2015-03-24	2015-1-d	CYL-002-0001:2-2	                                    	External	63.01	pmn	La Scala Holdings Ltd	#9442	Ct	USD	-530000	-530000	La Scala Holdings; LA #9492. 
+Dorson Ltd.	2015-03-24	2015-1-d	FOR-003-0001:1-3	                                    	Container	26	exp	Dorson Ltd.	Bank Charges	Dt	USD	50	50	Maersk Isle of Man Limited; INV 2013104180 FOR SHIPPING    EXPENSES. regular bank charge: USD 3023.1
+Dorson Ltd.	2015-03-24	2015-1-d	FOR-004-0001:1-3	                                    	Container	26	exp	Dorson Ltd.	Bank Charges	Dt	USD	17	17	OLD Coersive CORP; INVOICE NO. F1512201730 ISN 054681    OSN 050034 SSN 0367852    RFB/ATS OF 16/01/. regular bank charge: USD 5720
+La Scala Holdings Ltd	2015-03-24	2015-1-d	LAG-001-0001:1-3	                                    	External	26	exp	La Scala Holdings Ltd	Bank Charges	Dt	USD	6	6	Cypress Investments Ltd; LA #9492. regular bank charge: USD 530000
