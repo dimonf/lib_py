@@ -11,8 +11,11 @@ DotMap.__dir__ = lambda x: x.keys()
 import pandas as pd
 ##########################################################
 def _check_meta_attr_exists(df):
+    '''create attribute if not already exist on an insttance of Dataframe class'''
     if not hasattr(df, 'meta'):
-        df.meta = DotMap()
+        #pandas inhibits direct assignment of new attribute for Dataframe object
+        #df.meta = DotMap()
+        df.__dict__['meta'] = DotMap()
 
 
 def _drill(self, search_val):
@@ -46,7 +49,7 @@ def _drill(self, search_val):
                         val = t_pivot.index[r][n]
                    else:
                        val = t_pivot.index[r]
-                   rec_filter.append(tuple([key, val]))
+                   rec_filter.append([key, val])
                    label_ls.append(str(val))
 
                val = t_pivot.iloc[r,c]
@@ -54,12 +57,15 @@ def _drill(self, search_val):
 
                for n in range(len(t_pivot.columns.names)):
                    key = t_pivot.columns.names[n]
+                   if not key:
+                       continue
                    if col_size > 1:
                         val = t_pivot.columns[c][n]
                    else:
                         val = t_pivot.columns[c]
                    rec_filter.append([key, val])
                    label_ls.append(str(val))
+                   #print("col\n",label_ls, '\n', rec_filter)
                 ##########
 
                label_str = '/'.join(label_ls)
@@ -74,13 +80,18 @@ def _drill(self, search_val):
     ############################
     ############################
 
-    search_val = "*{0}*".format(search_val.lower())
+    search_val = "*{0}*".format(str(search_val).lower())
     catch = get_filter_spec(self, search_val)
 
     if len(catch) > 1:
         data = '\n'.join(list(catch.keys())[:2])
-        raise IndexError('more than 1 entries are found. be more specific:\n>>>>>>>\n' + data + '\n>>>>>>>')
-        pass
+        message = "more than 1 entries are found, be more specific:\n>>>>>>>\n" + data + "\n>>>>>>>"
+        print(message)
+        return
+        #since the drilldown function is designed for interactive use,
+        #raising exception is avoided
+#        raise IndexError('more than 1 entries are found. be more specific:\n>>>>>>>\n' + data + '\n>>>>>>>')
+#        pass
 
     if len(catch) == 0:
         return None
@@ -95,9 +106,10 @@ def _drill(self, search_val):
 
     query_spec = ' & '.join(t_filter_spec)
     recs = self._source_df.query(query_spec)
-    #pring totals if more than 1 record
+    #print totals if more than 1 record
     if len(recs) > 1:
-        return recs.pipe(totals)
+        return recs.pipe(_totals)
+        #return recs.totals()
 
     return recs
 
@@ -130,10 +142,29 @@ def _pivot_table(self, values=None, index=None, columns=None, aggfunc='sum',
     #t_df.drill = _drill
     return t_df
 
-def _regex_select(self, col, regex_pattern, out='d'):
-    '''self: DataFrame'''
-    # deal with NaN
-    b_indexer = self[col].fillna('').str.match(regex_pattern, case=False)
+
+def _regex_select(self, regex_pattern, col, out='d', invert=False):
+    ''' provides with convinient method to filter rows (axis=0 only), where
+        regex_pattern is applied to either index or a column ('col' argument)
+
+        self: DataFrame
+        col: either index or column name of given DataFrame
+        regex_pattern: text to search for
+    '''
+    #check whether col value is in columns or index name
+    if col in self.columns:
+        # deal with NaN
+        t_s = self[col].fillna('')
+    elif col in self.index.names:
+        t_s = self.index.get_level_values(col)
+    else:
+        raise KeyError('name '+col+' is not found neither in columns ' +
+                       self.columns + ' nor in index names '+self.index.names)
+    b_indexer = t_s.str.match(regex_pattern, case=False)
+
+    if invert:
+        b_indexer = b_indexer == False
+
     if out == 'd':
         #filtered [d]ataframe
         return self.loc[b_indexer]
@@ -158,7 +189,7 @@ def _list_records(self, columns=[], tag='default'):
     else:
         raise KeyError('no "meta" settings found for tag "'+tag +'"')
 
-def totals(df, axis='row'):
+def _totals_del_me(df, axis='row'):
     #TODO: allow to specify both axises in one argument
     t_df = df
     if axis in (0,'row','rows','r','both'):
@@ -212,32 +243,52 @@ def _rloc(df, search_str):
     else:
         raise KeyError('not single match was found for search criteria: ' + search_str)
 
+def _totals(df, axis='row'):
+    #TODO: allow to specify both axises in one argument
+    df_t = df.copy()
+    if axis in (0,'row','rows','r','both'):
+        t_total = df.sum(numeric_only=True)
+        #t_total.name = "TOTAL:"
+        #df = df.append(t_total)
+        #df.iloc[-1] = df.iloc[-1].fillna('-')
+        levels = len(df.index.names)
+        #t_index = ['Total:'] * levels
+        if levels > 1:
+            ind = tuple(['TOTAL:'] + ['---']*(levels-1))
+            df_t.loc[ind,:] = t_total
+            #df.loc[['Total:','--'],:] = t_total
+        else:
+            df_t.loc['TOTAL:',:] = t_total
+       # df = df.append(df.sum(numeric_only=True), ignore_index=True)
 
+    if axis in (1,'column', 'columns','c','col','both'):
+        t_total = df.sum(axis=1, numeric_only=True)
+        levels = len(df.columns.names)
+        if levels >1:
+            ind = tuple(['TOTAL:'] + ['-']*(levels-1))
+            df_t.loc[:,ind] = t_total
+        else:
+            df_t.loc[:,'TOTAL:'] = t_total
+        #df = df.concat([df, pd.DataFrame(df.sum(axis=1), columns=["Total"])],axis=1)
 
-class Object:
-    '''dumb object serves as building block '''
-    pass
+    return df_t.fillna('--')
 
-def d2obj(d):
-    """Convert a dict to an object
+def _drill_group_by(self, df):
+    '''
+    attached as a method to DF output from groupby.aggregate(), which
+    has index structure that reflects the original groupby construction parameters.
+    Output is the list of groups of records from the original (df) dataframe
+    that were previously aggregated by groupby
+    '''
+    groups = []
+    for val in self.index.values:
+        query = []
+        for ind, key in enumerate(self.index.names):
+            query.append(' {} == "{}" '.format(key, val[ind]))
+        query_str = ' and '.join(query)
+        groups.append(df.query(query_str))
 
-    >>> d = {'a': 1, 'b': {'c': 2}, 'd': ["hi", {'foo': "bar"}]}
-    >>> obj = dict2obj(d)
-    >>> obj.b.c
-    2
-    >>> obj.d
-    ["hi", {'foo': "bar"}]
-    """
-
-    try:
-        d = dict(d)
-    except (TypeError, ValueError):
-        return d
-    obj = Object()
-    for k, v in d.items():
-        obj.__dict__[k] = d2obj(v)
-    return obj
-
+    return groups
 
 def pd_infect():
     '''extend standard pandas.DataFrame object with drill_down functionality.

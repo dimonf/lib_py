@@ -80,7 +80,7 @@ class Data():
 def get_name_dict(names):
     '''returns dict mapping of nicknamed versions of given array (names)'''
     def rectify(n):
-        return n.replace(' ','_').replace('(','').replace(')','').replace('-','_').lower()
+        return n.replace(' ','_').replace('(','').replace(')','').replace('-','_').replace('__','_').lower()
 
     len_default = 5
     names_d = dict()
@@ -91,6 +91,7 @@ def get_name_dict(names):
         else:
             #TODO: call itself recursively
             t_n = t_n + "_"+rectify(n[-len_default:])
+            t_n = rectify(t_n)
             if t_n in names_d:
                 raise KeyError("can'f generate proper nickname for "+n+
                     "\n the name "+t_n +" seems to be aloread in the lsit")
