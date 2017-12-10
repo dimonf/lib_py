@@ -137,8 +137,10 @@ def _pivot_table(self, values=None, index=None, columns=None, aggfunc='sum',
     #we replace NaN with 0 on the next line
     t_df.fillna(0, inplace=True)
     #
-    t_df._source_df = self
-    t_df.drill = types.MethodType(_drill, t_df)
+    t_df.__dict__.update({'_source_df':self})
+    #t_df._source_df = self
+    #t_df.drill = types.MethodType(_drill, t_df)
+    t_df.__dict__.update({'drill': types.MethodType(_drill, t_df)})
     #t_df.drill = _drill
     return t_df
 
