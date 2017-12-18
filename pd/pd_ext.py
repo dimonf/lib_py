@@ -1,6 +1,7 @@
 from dotmap import DotMap
 from functools import partialmethod
 import types
+import numpy as np
 
 #https://github.com/drgrib/dotmap
 #we use the object's flexibility for quick prototyping and for storing metadata in custom attributes
@@ -162,6 +163,10 @@ def _regex_select(self, regex_pattern, col, out='d', invert=False):
     else:
         raise KeyError('name '+col+' is not found neither in columns ' +
                        self.columns + ' nor in index names '+self.index.names)
+
+    if t_s.dtype != np.object:
+       t_s = t_s.astype('str')
+ 
     b_indexer = t_s.str.match(regex_pattern, case=False)
 
     if invert:
