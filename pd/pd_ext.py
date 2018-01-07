@@ -166,7 +166,7 @@ def _regex_select(self, regex_pattern, col, out='d', invert=False):
 
     if t_s.dtype != np.object:
        t_s = t_s.astype('str')
- 
+
     b_indexer = t_s.str.match(regex_pattern, case=False)
 
     if invert:
