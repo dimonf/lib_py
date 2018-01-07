@@ -307,6 +307,7 @@ def pd_infect():
     #pd.DataFrame.drill = _drill
     pd.DataFrame.rr = _regex_select
     pd.DataFrame.rloc = _rloc
+    pd.DataFrame.totals = _totals
     #pd.DataFrame.ls = _list_records
     pd.DataFrame.ls = partialmethod(_list_records, tag='short')
     pd.DataFrame.ll = partialmethod(_list_records, tag='long')
