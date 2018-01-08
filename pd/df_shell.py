@@ -1,5 +1,3 @@
-import cmd
-
 ''' this module simplifies interactive work with a dataframe.
     it's distinct features are:
         - basic one-line editor (to mangling existing data)
@@ -41,24 +39,34 @@ sh.open(df)
 10833  2017-12-22    24.10   EUR     Kapsalos,VISA
 -------------------
 '''
+import os, cmd, pandas as pd, numpy as np
 
 class DfShell(cmd.Cmd):
     intro = 'Welcome to the dataframe data manipulation shell'
-    prompt = '(df)'
+    IFS = '|'
 
     def __init__(self, df):
         super().__init__()
         self.df = df
+        self.update_prompt()
 
-    def do_append(self, arg):
-        print(arg)
-        print(type(arg))
+    def close(self):
+        print('bye')
+
+    def update_prompt(self):
+        self.prompt = '({0}/{1})'.format(len(self.df),len(self.df.columns))
+
+#################################
+    def do_append(self, s):
+        df = self.format_record(s)
+        print(df)
+        a = input('append to existing df?(y/n):')
+        if a == 'y':
+            self.df.append(df)
+        self.update_prompt()
 
     def complete_append(self, text, line, begidx, endidx):
         print(text)
-
-    def do_shell(self, arg):
-        print(arg)
 
     def do_exit(self, *args):
         self.close()
@@ -68,6 +76,23 @@ class DfShell(cmd.Cmd):
         self.close()
         return True
 
-    def close(self):
-        print('bye')
+    def do_shell(self, s):
+        try:
+            print(eval(s))
+        except NameError as err:
+            print(err)
+        #os.system(s)
+#################################
+    def format_record(self, str):
+        '''parse and format a record for existing dataframe'''
+        values = str.split(self.IFS)
+        if len(values) != len(self.df.columns):
+            raise AttributeError('number of values provided ' + len(values) +
+                                 'differs from number of columns '+len(self.df.columns))
+        new_df = pd.DataFrame(values, columns = self.df.columns)
+        #preserve data format of master dataframe
+        for col, t in zip(self.df.columns, self.df.dtypes):
+            new_df[col] = new_df[col].astype(t)
+        return new_df
+
 
