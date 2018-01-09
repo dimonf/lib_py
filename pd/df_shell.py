@@ -45,9 +45,10 @@ class DfShell(cmd.Cmd):
     intro = 'Welcome to the dataframe data manipulation shell'
     IFS = '|'
 
-    def __init__(self, df):
+    def __init__(self, df, context=None):
         super().__init__()
         self.df = df
+        self.context = context
         self.update_prompt()
 
     def close(self):
@@ -56,14 +57,27 @@ class DfShell(cmd.Cmd):
     def update_prompt(self):
         self.prompt = '({0}/{1})'.format(len(self.df),len(self.df.columns))
 
+    def format_record(self, str):
+        '''parse and format a record for existing dataframe'''
+        values = str.split(self.IFS)
+        if len(values) != len(self.df.columns):
+            return('number of values provided ' + len(values) +
+                  'differs from number of columns '+len(self.df.columns))
+        new_df = pd.DataFrame.from_records([values], columns = self.df.columns)
+        #preserve data format of master dataframe
+        for col, t in zip(self.df.columns, self.df.dtypes):
+            new_df[col] = new_df[col].astype(t)
+        return new_df
 #################################
+
     def do_append(self, s):
         df = self.format_record(s)
         print(df)
-        a = input('append to existing df?(y/n):')
-        if a == 'y':
-            self.df.append(df)
-        self.update_prompt()
+        if type(df) == pd.DataFrame:
+            a = input('append to existing df?(y/n):')
+            if a == 'y':
+                self.df = self.df.append(df)
+                self.update_prompt()
 
     def complete_append(self, text, line, begidx, endidx):
         print(text)
@@ -77,22 +91,16 @@ class DfShell(cmd.Cmd):
         return True
 
     def do_shell(self, s):
+        '''provide access to upstream context'''
         try:
-            print(eval(s))
+            print(eval(s, self.context))
         except NameError as err:
             print(err)
         #os.system(s)
-#################################
-    def format_record(self, str):
-        '''parse and format a record for existing dataframe'''
-        values = str.split(self.IFS)
-        if len(values) != len(self.df.columns):
-            raise AttributeError('number of values provided ' + len(values) +
-                                 'differs from number of columns '+len(self.df.columns))
-        new_df = pd.DataFrame(values, columns = self.df.columns)
-        #preserve data format of master dataframe
-        for col, t in zip(self.df.columns, self.df.dtypes):
-            new_df[col] = new_df[col].astype(t)
-        return new_df
 
-
+    def do_lshell(self, s):
+        '''provide access to local context'''
+        try:
+            print(eval(s, globals(),locals()))
+        except Exception as err:
+            print(err)
