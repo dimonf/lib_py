@@ -46,8 +46,14 @@ class DfShell(cmd.Cmd):
     IFS = '|'
 
     def __init__(self, df, context=None):
+        '''we need context (as locals()) if class is imported. If the code
+           run in ipython shell via %run magic, the context arg may be omitted'''
         super().__init__()
+        if df.index.dtype != int:
+            raise TypeError('only integer indexed df is allowd')
         self.df = df
+        self.dtypes = self.df.dtypes
+        self.columnes = self.df.columns
         self.context = context
         self.update_prompt()
 
@@ -57,20 +63,36 @@ class DfShell(cmd.Cmd):
     def update_prompt(self):
         self.prompt = '({0}/{1})'.format(len(self.df),len(self.df.columns))
 
+    def cast_dtypes(self, df):
+        for col, t in zip(self.columns, self.dtypes):
+            df[col] = df[col].astype(t)
+
     def format_record(self, str):
         '''parse and format a record for existing dataframe'''
+        new_df = None
         values = str.split(self.IFS)
         if len(values) != len(self.df.columns):
             return('number of values provided ' + len(values) +
                   'differs from number of columns '+len(self.df.columns))
-        new_df = pd.DataFrame.from_records([values], columns = self.df.columns)
+        t_df = self.df.iloc[-1,:].copy()
+        try:
+            #try to append to slice of existing dataframe new row
+            #preserving the original data type
+            t_df.loc[t_df.index.max()+1,:] = values
+            self.cast_dtypes(t_df)
+        except Exception as err:
+            print(err)
+            return(None)
         #preserve data format of master dataframe
-        for col, t in zip(self.df.columns, self.df.dtypes):
-            new_df[col] = new_df[col].astype(t)
+        self.df[self.df.index.max()+1,:] = values
+        self.cast_dtypes(self.df)
         return new_df
 #################################
 
     def do_append(self, s):
+        '''pd.DataFrame.append/concat methods avoided as they produce
+           new object and original dataframe, passed as attribute to
+           __init___, is left unmodified '''
         df = self.format_record(s)
         print(df)
         if type(df) == pd.DataFrame:
