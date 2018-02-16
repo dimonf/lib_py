@@ -97,7 +97,7 @@ class RSet:
         #accounts = accounts if accounts else self.dt_source['account'].unique()
         #
         sources_b = self.dt_source['source'].isin(sources) if sources else True
-        accounts_b = self.dt_source['accounts'].isin(accounts) if accounts else True
+        accounts_b = self.dt_source['account'].isin(accounts) if accounts else True
         data_from, data_to = [t.strip() for t in period.split(':')]
 
         return self.dt_source[(self.dt_source['date'] >= data_from) & (self.dt_source['date'] <= data_to)
