@@ -269,14 +269,12 @@ def _totals(df, axis='row'):
 
 def _rtotal(df, column):
     '''append column with running total '''
-    #TODO: replace 'insert' with 'concat' which will make 'copy' obsolete
     pos = df.columns.get_indexer_for([column])[0]
     if pos == -1:
         raise KeyError('no column "'+column + '" found')
-    
-    tmp_df = df.copy()
-    tmp_df.insert(int(pos+1), column+":t", df[column].cumsum())
-    return tmp_df
+    (df_before, df_rtotal, df_after) = df.iloc[:,0:pos+1], df.iloc[:,pos].cumsum(), df.iloc[:,pos+1:]
+    df_rtotal.name = column + ":t"
+    return pd.concat([df_before, df_rtotal, df_after], axis=1)
   
 def _drill_group_by(self, df):
     '''
