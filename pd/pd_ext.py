@@ -2,6 +2,7 @@ from dotmap import DotMap
 from functools import partialmethod
 import types
 import numpy as np
+import re
 
 #https://github.com/drgrib/dotmap
 #we use the object's flexibility for quick prototyping and for storing metadata in custom attributes
@@ -12,7 +13,7 @@ DotMap.__dir__ = lambda x: x.keys()
 import pandas as pd
 ##########################################################
 def _check_meta_attr_exists(df):
-    '''create attribute if not already exist on an insttance of Dataframe class'''
+    '''create attribute if not already exist on an instance of Dataframe class'''
     if not hasattr(df, 'meta'):
         #pandas inhibits direct assignment of new attribute for Dataframe object
         #df.meta = DotMap()
@@ -151,8 +152,9 @@ def _regex_select(self, regex_pattern, col, out='d', invert=False):
         regex_pattern is applied to either index or a column ('col' argument)
 
         self: DataFrame
-        col: either index or column name of given DataFrame
         regex_pattern: text to search for
+        col: either index or column name of given DataFrame
+        out: output as d(ataframe),b(oolean),u(nique values, Series) or i(ndex)
     '''
     #check whether col value is in columns or index name
     if col in self.columns:
@@ -195,21 +197,6 @@ def _list_records(self, columns=[], tag='default'):
         return self[self.meta.list[tag]]
     else:
         raise KeyError('no "meta" settings found for tag "'+tag +'"')
-
-def _totals_del_me(df, axis='row'):
-    #TODO: allow to specify both axises in one argument
-    t_df = df
-    if axis in (0,'row','rows','r','both'):
-        t_total = t_df.sum(numeric_only=True)
-        t_total.name = "TOTAL:"
-        t_df = t_df.append(t_total)
-        t_df.iloc[-1] = t_df.iloc[-1].fillna('-')
-       # t_df = t_df.append(t_df.sum(numeric_only=True), ignore_index=True)
-
-    if axis in (1,'column', 'columns','c','col','both'):
-        t_df = t_df.concat([t_df, pd.DataFrame(t_df.sum(axis=1), columns=["Total"])],axis=1)
-
-    return t_df
 
 def _rloc(df, search_str):
     '''regex based indexer'''
@@ -280,6 +267,15 @@ def _totals(df, axis='row'):
 
     return df_t.fillna('--')
 
+def _rtotal(df, column):
+    '''append column with running total '''
+    pos = df.columns.get_indexer_for([column])[0]
+    if pos == -1:
+        raise KeyError('no column "'+column + '" found')
+    (df_before, df_rtotal, df_after) = df.iloc[:,0:pos+1], df.iloc[:,pos].cumsum(), df.iloc[:,pos+1:]
+    df_rtotal.name = column + ":t"
+    return pd.concat([df_before, df_rtotal, df_after], axis=1)
+  
 def _drill_group_by(self, df):
     '''
     attached as a method to DF output from groupby.aggregate(), which
@@ -297,6 +293,11 @@ def _drill_group_by(self, df):
 
     return groups
 
+def _ugrep(sr, pattern):
+    '''unique grep on a series'''
+    re_compiled = re.compile(pattern, re.I)
+    return [v for v in sr.unique() if re_compiled.search(v)]
+    
 def pd_infect():
     '''extend standard pandas.DataFrame object with drill_down functionality.
        restrictions:
@@ -308,9 +309,11 @@ def pd_infect():
     pd.DataFrame.rr = _regex_select
     pd.DataFrame.rloc = _rloc
     pd.DataFrame.totals = _totals
+    pd.DataFrame.rtotal = _rtotal
     #pd.DataFrame.ls = _list_records
     pd.DataFrame.ls = partialmethod(_list_records, tag='short')
     pd.DataFrame.ll = partialmethod(_list_records, tag='long')
 
     #pd.ll = property(partialmethod(_list_records, tag='long'), partialmethod(_list_records, tag='long'))
     #pd.ls = property(partialmethod(_list_records, tag='short'), partialmethod(_list_records, tag='short'))
+    pd.core.series.Series.ugrep = _ugrep

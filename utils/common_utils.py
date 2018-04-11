@@ -21,11 +21,12 @@ def d2obj(d):
         obj.__dict__[k] = d2obj(v)
     return obj
 
-def grep_list(l, s):
+def grep_list(pattern, val_list):
     import re
 
-    re_compiled = re.compile(s)
-    return [v for v in l if re_compiled.search(v)]
+    '''case insensitive search trhough a list'''
+    re_compiled = re.compile(pattern, re.I)
+    return [v for v in val_list if re_compiled.search(v)]
 
 def get_name_dict(names):
     '''returns dict mapping of nicknamed versions of given array (names)'''
