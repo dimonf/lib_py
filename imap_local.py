@@ -12,10 +12,10 @@ class IMAP():
     def __init__(self, *args, **kwargs):
         self.connect(*args, **kwargs)
 
-    def connect(self, host, user, password, box='INBOX'):
+    def connect(self, host, user, password, box='INBOX', readonly=False):
         self.con = imaplib.IMAP4_SSL(host)
         self.con.login(user, password)
-        self.con.select(box)
+        self.con.select(box, readonly)
 
     def search(self, imap_filter='UNSEEN', output='mail', query_str='(BODY.PEEK[HEADER])'):
         '''
@@ -32,12 +32,11 @@ class IMAP():
         '''
 
         msgs = []
-        resp, items = self.con.search(None, imap_filter)
+        resp, data_s = self.con.search(None, imap_filter)
         if resp != 'OK':
-            return 'Error'
-        items = items[0].split()
+            return 'No message found'
 
-        for id in items:
+        for id in data_s[0].split():
             resp, data = self.con.fetch(id, query_str)
             email_body = data[0][1]
             if output == 'mail':
@@ -59,7 +58,7 @@ class IMAP():
             if not os.path.exists(dir_path):
                 os.makedirs(dir_path)
 
-        for m  in mm:
+        for m in mm:
             m = email.message_from_bytes(m)
             fl_exclude=''
             if m.get_content_maintype() != 'multipart':
@@ -84,11 +83,12 @@ class IMAP():
 
                 file_error=''
                 if not os.path.isfile(file_path):
-                    fp = open(file_path, 'wb')
-                    if dry_run:
-                        fp.close()
-                        os.remove(file_path)
-                    else:
+#                    fp = open(file_path, 'wb')
+#                    if dry_run:
+#                        fp.close()
+#                        os.remove(file_path)
+                    if not dry_run:
+                        fp = open(file_path, 'wb')
                         try:
                             fp.write(part.get_payload(decode=True))
                         except TypeError:
