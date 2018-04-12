@@ -98,6 +98,7 @@ class DfShell(cmd.Cmd):
         if type(df) == pd.DataFrame:
             a = input('append to existing df?(y/n):')
             if a == 'y':
+                self.df.loc[self.df.index.max()+1,:] = 
                 self.df = self.df.append(df)
                 self.update_prompt()
 
