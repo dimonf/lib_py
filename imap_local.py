@@ -10,9 +10,12 @@ import sys
 class IMAP():
     att_dir = 'download_att'
     re_num_uid = re.compile(r'^([0-9]+)\s+.*\bUID\s+([0-9]+).*')
+    re_att_filename = re.compile(r'filename["\s]+(=[^"]+)')
+    re_att_filesize = re.compile(r'base64["\s]+([0-9]+)')
 
 
     def __init__(self, *args, **kwargs):
+        self._host, self._user, self._password, self._box = ['']*4
         self.connect_ssl(*args, **kwargs)
 
     def bnumbers2str(self, numbers):
@@ -40,7 +43,18 @@ class IMAP():
             return ()
 
     def parse_bodystructure(self, data, part):
-        return ''
+        if part == "attachments":
+            out = []
+            fnames_r = re.findall(self.re_att_filename, data)
+            for n in fnames_r:
+                out.append(str(email.header.make_header(
+                    email.header.decode_header(n))))
+        if part == 'attachments_size':
+            out = []
+            sizes = re.findall(self.re_att_filesize, data)
+            for s in sizes:
+                out.append('{}Kb'.format(int(int(s)/1364)))
+        return out
 
     def get_date(self, data):
         local_date_str = ''
@@ -52,12 +66,22 @@ class IMAP():
         return local_date_str
 
 
-    def connect_ssl(self, host, user, password, box='INBOX', readonly=False):
+    def connect_ssl(self, host=None, user=None, password=None, box=None, readonly=False):
+        host = host if host else self._host
+        user = user if user else self._user
+        password = password if password else self._password
+        box = box if box else self._box
+
+        box = box if box else 'INBOX'
+
         self.con = imaplib.IMAP4_SSL(host)
         self.con.login(user, password)
         self.con.select(box, readonly)
-        return self.con
+        #
+        (self._host, self._user, self._password, self._box) = (
+            host, user, password, box)
 
+        return self.con
 
     def search(self, imap_filter='UNSEEN'):
         '''
@@ -104,7 +128,10 @@ class IMAP():
             d['subject'] = str(email.header.make_header(
                 email.header.decode_header(message['Subject'])))
             d['from'] = message['From']
-            d['attachments'] = self.parse_bodystructure(bodystructure,'attachments')
+            d['attachments'] = list(zip(
+                self.parse_bodystructure(bodystructure,'attachments'),
+                self.parse_bodystructure(bodystructure,'attachments_size')
+            ))
             records.append(d)
         return records
 
