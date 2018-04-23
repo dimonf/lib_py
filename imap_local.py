@@ -9,16 +9,81 @@ import sys
 
 class IMAP():
     att_dir = 'download_att'
+    re_num_uid = re.compile(r'^([0-9]+)\s+.*\bUID\s+([0-9]+).*')
+    re_att_filename = re.compile(r'filename["\s]+(=[^"]+)')
+    re_att_filesize = re.compile(r'base64["\s]+([0-9]+)')
+
 
     def __init__(self, *args, **kwargs):
-        self.connect(*args, **kwargs)
+        self._host, self._user, self._password, self._box = ['']*4
+        self.connect_ssl(*args, **kwargs)
 
-    def connect(self, host, user, password, box='INBOX', readonly=False):
+    def bnumbers2str(self, numbers):
+        ''' get messages numbers, returned by IMAP server to SEARCH command and
+            convert byte message to comma-separated string'''
+        try:
+            numbers = ','.join([s.decode() for s in numbers[0].split()])
+        except:
+            return numbers
+        return numbers
+
+    def decode(self, b):
+        '''attempt to decode a value'''
+        try:
+            return b.decode()
+        except:
+            return b
+
+    def get_num_UID(self, part):
+        '''parse both, number and uid'''
+        num_uid = self.re_num_uid.match(part)
+        if num_uid:
+            return num_uid.groups()
+        else:
+            return ()
+
+    def parse_bodystructure(self, data, part):
+        if part == "attachments":
+            out = []
+            fnames_r = re.findall(self.re_att_filename, data)
+            for n in fnames_r:
+                out.append(str(email.header.make_header(
+                    email.header.decode_header(n))))
+        if part == 'attachments_size':
+            out = []
+            sizes = re.findall(self.re_att_filesize, data)
+            for s in sizes:
+                out.append('{}Kb'.format(int(int(s)/1364)))
+        return out
+
+    def get_date(self, data):
+        local_date_str = ''
+        date_tuple = email.utils.parsedate_tz(data)
+        if date_tuple:
+           local_date = datetime.datetime.fromtimestamp(
+                 email.utils.mktime_tz(date_tuple))
+           local_date_str = local_date.strftime("%Y-%b-%d %H:%M")
+        return local_date_str
+
+
+    def connect_ssl(self, host=None, user=None, password=None, box=None, readonly=False):
+        host = host if host else self._host
+        user = user if user else self._user
+        password = password if password else self._password
+        box = box if box else self._box
+
+        box = box if box else 'INBOX'
+
         self.con = imaplib.IMAP4_SSL(host)
         self.con.login(user, password)
         self.con.select(box, readonly)
+        #
+        (self._host, self._user, self._password, self._box) = (
+            host, user, password, box)
 
-    def search(self, imap_filter='UNSEEN', output='str', query_str='(BODY.PEEK[HEADER])'):
+        return self.con
+
+    def search(self, imap_filter='UNSEEN'):
         '''
         imap_filter:
             (SUBJECT "test message 2")
@@ -29,40 +94,46 @@ class IMAP():
             mail|str|text
         query_str:
             (BODY.PEEK[HEADER] FLAGS)   #just peek header without changing enything
+            (BODY.PEEK[HEADER] UID) #get UID of the message (rfc3501 2.3.1)
             (RFC822)    #the whole message
         '''
 
-        msgs = []
-        resp, data_s = self.con.search(None, imap_filter)
+        resp, numbers = self.con.search(None, imap_filter)
         if resp != 'OK':
             return 'No message found'
 
-        for id in data_s[0].split():
-            resp, data = self.con.fetch(id, query_str)
-            #output option for raw byte stream is discarded (no use for)
-            #hence, conversion to str is done unconditionally
-            email_body = email.message_from_bytes(data[0][1])
+        self.numbers = self.bnumbers2str(numbers)
+        return self.numbers
 
-            if output in ['str','text', 'txt', 'mail']:
-                msgs.append(email_body)
-            elif output in ['digest','print']:
-                # Now convert to local date-time
-                #stolen from here https://gist.github.com/robulouski/7441883
-                local_date_str = ''
-                date_tuple = email.utils.parsedate_tz(email_body['Date'])
-                if date_tuple:
-                     local_date = datetime.datetime.fromtimestamp(
-                         email.utils.mktime_tz(date_tuple))
-                     local_date_str = local_date.strftime("%Y-%b-%d %H:%M")
-                subject = str(email.header.make_header(
-                    email.header.decode_header(email_body['Subject'])))
-                #
-                msgs.append('{}#{}| {}'.format(
-                    local_date_str,
-                    id.decode('utf-8'),
-                    subject))
+    def list(self, numbers=None, columns='num,uid,message-id,date,subject,from,att'):
+        query_str = '(BODY.PEEK[HEADER] BODYSTRUCTURE UID)'
 
-        return msgs
+        if not numbers:
+            numbers = self.numbers
+        else:
+            self.numbers = self.bnumbers2str(numbers)
+
+        resp,data = self.con.fetch(self.numbers, query_str)
+        records = []
+        #select only even items in array
+        for i in range(0, len(data), 2):
+            d = {}
+            message = email.message_from_bytes(data[i][1])
+            message_h = data[i][0].decode()
+            bodystructure = data[i+1].decode()
+            d['num'],d['uid'] = self.get_num_UID(message_h)
+            d['message_id'] = message['Message-ID']
+            #d['date'] = message['Date']
+            d['date'] = self.get_date(message['Date'])
+            d['subject'] = str(email.header.make_header(
+                email.header.decode_header(message['Subject'])))
+            d['from'] = message['From']
+            d['attachments'] = list(zip(
+                self.parse_bodystructure(bodystructure,'attachments'),
+                self.parse_bodystructure(bodystructure,'attachments_size')
+            ))
+            records.append(d)
+        return records
 
     def get_attachments(self, imap_filter='UNSEEN', dir=None, dry_run=None, exclude_subj=None):
         '''just to be a bit more memory-vise efficient, pre-fetch data in bytes
@@ -114,5 +185,6 @@ class IMAP():
                     print(file_error+'   file: ' + file_path)
                 else:
                     print("write error, file exists: " + file_path)
+
 
 
