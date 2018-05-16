@@ -133,7 +133,7 @@ def _pivot_table(self, values=None, index=None, columns=None, aggfunc='sum',
 
     t_df = self.pivot_table(**kargs)
     #create reference to the original dataframe to enable drill-down functionality
-    #Ths soudce dataframe may be created 'on the fly' and this would be the only reference to it
+    #Ths source dataframe may have been created 'on the fly' and this would be the only reference to it
     #e.g.: dt[dt['column1] == 'some_value'].pivotd(columns=..., index=..., values=...)
     #with fillna=0  some columns become of integer type which rounds up totals. For this reason
     #we replace NaN with 0 on the next line
@@ -143,7 +143,6 @@ def _pivot_table(self, values=None, index=None, columns=None, aggfunc='sum',
     #t_df._source_df = self
     #t_df.drill = types.MethodType(_drill, t_df)
     t_df.__dict__.update({'drill': types.MethodType(_drill, t_df)})
-    #t_df.drill = _drill
     return t_df
 
 
@@ -199,12 +198,16 @@ def _list_records(self, columns=[], tag='default'):
         raise KeyError('no "meta" settings found for tag "'+tag +'"')
 
 def _rloc(df, search_str):
-    '''regex based indexer'''
-    #search string format: regex tokens for each index level separated by ','. E.g
-    #tokens       : index_0 | index_1  | index_3 | col_0 | col_1
-    #search string: [^D].*ac,bud[gG]et$,         ,       ,exp_a
-    ind_len = len(df.index.levels)
-    col_len = len(df.columns.levels)
+    '''regex based indexer
+    search string format: regex tokens for each index level separated by ','. E.g
+      tokens       : index_0 | index_1  | index_3 | col_0 | col_1
+      search string: [^D].*ac,bud[gG]et$,         ,       ,exp_a
+    the indexer format for each of axis is: tuple(level_0, [level_1_a, level_1_b], ..., level_n)
+      each level's indexer can be slice(None) which accepts any value 
+      (https://pandas.pydata.org/pandas-docs/stable/advanced.html#cross-section)
+    '''
+    ind_len = df.index.nlevels
+    col_len = df.columns.nlevels
 
     s_str = search_str.split(',')
     #reshape search args to conform to dataframe overall indexes size:
@@ -212,35 +215,38 @@ def _rloc(df, search_str):
     s_str.extend(['' for i in range(ind_len + col_len - len(s_str))])
     #
     match_hits = 0
-    def get_vals(level, str_v):
+    n = 0
+    def get_vals(level):
         nonlocal match_hits
+        nonlocal n
 
-        l_match = list(level[level.str.contains(str_v, case=False)]) if str_v else []
+        l_match = list(level[level.str.contains(s_str[n], case=False)]) if s_str[n] else []
+        n+=1
+
         if len(l_match):
             match_hits +=1
             return l_match
         else:
             return slice(None)
 
-    (i_s, c_s) = ([],[])
-    n=0
-    for level in df.index.levels:
-        i_s.append(get_vals(level, s_str[n]))
-        n+=1
-    for level in df.columns.levels:
-        c_s.append(get_vals(level, s_str[n]))
-        n+=1
+    a = dict(index = dict(ind=[], ref=df.index), columns = dict(ind=[], ref=df.columns))
+    for k,v in a.items():
+        if v['ref'].nlevels == 1:
+            v['ind'].append(get_vals(v['ref']))
+        else:
+           for level in v['ref'].levels:
+              v['ind'].append(get_vals(level))
 
     #generally we want empty dataframe if our search didn't match any index value
     if match_hits:
-        return df.loc[tuple(i_s), tuple(c_s)]
+        return df.loc[tuple(a['index']['ind']), tuple(a['columns']['ind'])]
     else:
         raise KeyError('not single match was found for search criteria: ' + search_str)
 
 def _totals(df, axis='row'):
     #TODO: allow to specify both axises in one argument
     df_t = df.copy()
-    if axis in (0,'row','rows','r','both'):
+    if axis in (0,'row','rows','r','both', 'all'):
         t_total = df.sum(numeric_only=True)
         #t_total.name = "TOTAL:"
         #df = df.append(t_total)
@@ -255,7 +261,7 @@ def _totals(df, axis='row'):
             df_t.loc['TOTAL:',:] = t_total
        # df = df.append(df.sum(numeric_only=True), ignore_index=True)
 
-    if axis in (1,'column', 'columns','c','col','both'):
+    if axis in (1,'column', 'columns','c','col','both', 'all'):
         t_total = df.sum(axis=1, numeric_only=True)
         levels = len(df.columns.names)
         if levels >1:
@@ -268,7 +274,7 @@ def _totals(df, axis='row'):
     return df_t.fillna('--')
 
 def _rtotal(df, column):
-    '''append column with running total '''
+    '''append column with running total for selected columns in a dataframe'''
     pos = df.columns.get_indexer_for([column])[0]
     if pos == -1:
         raise KeyError('no column "'+column + '" found')
