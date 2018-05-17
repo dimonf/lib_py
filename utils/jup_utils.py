@@ -2,7 +2,12 @@ def get_kernel_id():
    '''get kernel ID for use with "jupyter console --existing <ID>"
       This script shall be run within notebook of interest '''
    import ipykernel
-   kernel_id = ipykernel.connect.get_connection_file().split('/')[-1]
+
+   try:
+       kernel_id = ipykernel.connect.get_connection_file().split('/')[-1]
+   except:
+       return('no MultiInstance support')
+
    #dump ID to predefined file
    with open('/tmp/jup_id','w') as f:
          f.write(kernel_id)
