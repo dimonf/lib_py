@@ -178,6 +178,14 @@ def _regex_select(self, regex_pattern, col, out='d', invert=False):
         #[i]ndex
         return self.loc[b_indexer].index.tolist()
 
+def _regex_select_groupby(self, regex_pattern):
+    import re
+    r_search = re.compile(regex_pattern, re.IGNORECASE)
+    for t,r in self:
+        if r_search.search(t):
+            return (r)
+
+
 def _between (self, column, left, right, inclusive=True):
     ''' syntactic sugar for pd.Series.between function'''
     return(self[self[column].between(left, right, inclusive)])
@@ -303,6 +311,7 @@ def pd_infect():
         (pd.DataFrame, 'rtotal',_rtotal),
         (pd.DataFrame, 'btw',_between),
         (pd.core.series.Series, 'ugrep',_ugrep),
+        (pd.core.groupby.groupby.DataFrameGroupBy, 'rr', _regex_select_groupby)
     ]
 
     for i in functions:
