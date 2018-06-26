@@ -184,6 +184,10 @@ def _regex_select_groupby(self, regex_pattern):
     import re
     r_search = re.compile(regex_pattern, re.IGNORECASE)
     for t,r in self:
+        #if multilevel index - make it flat
+        if not isinstance(t, str):
+            t = '_'.join(t)
+        #
         if r_search.search(t):
             return (r)
 
