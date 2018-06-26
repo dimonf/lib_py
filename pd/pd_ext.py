@@ -12,14 +12,6 @@ DotMap.__dir__ = lambda x: x.keys()
 #
 import pandas as pd
 ##########################################################
-def _check_meta_attr_exists(df):
-    '''create attribute if not already exist on an instance of Dataframe class'''
-    if not hasattr(df, 'meta'):
-        #pandas inhibits direct assignment of new attribute for Dataframe object
-        #df.meta = DotMap()
-        df.__dict__['meta'] = DotMap()
-
-
 def _drill(self, search_val):
     import fnmatch
     '''this function is monkey patched to a dataframe instance upon execution of pivot_table method.
@@ -188,16 +180,18 @@ def _regex_select(self, regex_pattern, col, out='d', invert=False):
         #[i]ndex
         return self.loc[b_indexer].index.tolist()
 
-def _list_records(self, columns=[], tag='default'):
-    _check_meta_attr_exists(self)
+def _regex_select_groupby(self, regex_pattern):
+    import re
+    r_search = re.compile(regex_pattern, re.IGNORECASE)
+    for t,r in self:
+        if r_search.search(t):
+            return (r)
 
-    if len(columns) > 0:
-        self.meta.list[tag] = columns
 
-    if len(self.meta.list[tag]) > 0:
-        return self[self.meta.list[tag]]
-    else:
-        raise KeyError('no "meta" settings found for tag "'+tag +'"')
+def _between (self, column, left, right, inclusive=True):
+    ''' syntactic sugar for pd.Series.between function'''
+    return(self[self[column].between(left, right, inclusive)])
+
 
 def _rloc(df, search_str):
     '''regex based indexer
@@ -311,17 +305,18 @@ def pd_infect():
        restrictions:
            a. multiple values for 'values' parameter of _pivot_table are not supported 
     '''
+    import pandas as pd, numpy as np
+    functions = [
+        (pd.DataFrame, 'pivotd',_pivot_table),
+        (pd.DataFrame, 'rr',_regex_select),
+        (pd.DataFrame, 'totals',_totals),
+        (pd.DataFrame, 'rtotal',_rtotal),
+        (pd.DataFrame, 'btw',_between),
+        (pd.core.series.Series, 'ugrep',_ugrep),
+        (pd.core.groupby.groupby.DataFrameGroupBy, 'rr', _regex_select_groupby)
+    ]
 
-    pd.DataFrame.pivotd = _pivot_table
-    #pd.DataFrame.drill = _drill
-    pd.DataFrame.rr = _regex_select
-    pd.DataFrame.rloc = _rloc
-    pd.DataFrame.totals = _totals
-    pd.DataFrame.rtotal = _rtotal
-    #pd.DataFrame.ls = _list_records
-    pd.DataFrame.ls = partialmethod(_list_records, tag='short')
-    pd.DataFrame.ll = partialmethod(_list_records, tag='long')
-
-    #pd.ll = property(partialmethod(_list_records, tag='long'), partialmethod(_list_records, tag='long'))
-    #pd.ls = property(partialmethod(_list_records, tag='short'), partialmethod(_list_records, tag='short'))
-    pd.core.series.Series.ugrep = _ugrep
+    for i in functions:
+        #check if the name is available (avoid overwriting)
+        if not hasattr(i[0], i[1]):
+            setattr(i[0], i[1], i[2])
