@@ -134,8 +134,16 @@ class IMAP():
             ))
             records.append(d)
         return records
+    def get_attachments(self, numbers, dir=None, dry_run=None):
+        for n in numbers:
+            rep, data = self.con.fetch(n, '(RFC822)')
+            if not rep:
+                continue
+            
 
-    def get_attachments(self, imap_filter='UNSEEN', dir=None, dry_run=None, exclude_subj=None):
+
+
+    def get_attachments_old(self, imap_filter='UNSEEN', dir=None, dry_run=None, exclude_subj=None):
         '''just to be a bit more memory-vise efficient, pre-fetch data in bytes
            and convert it to an object upon processing, so at any time only one "mail"
            object eats memory

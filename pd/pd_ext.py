@@ -33,8 +33,10 @@ def _drill(self, search_val):
            by one line. if more than 1 line matches criteria, the search is failed
         '''
 
-        index_size = len(t_pivot.index.names)
-        col_size   = len(t_pivot.columns.names)
+        index_size = t_pivot.index.nlevels
+        col_size = t_pivot.columns.nlevels
+#        index_size = len(t_pivot.index.names)
+#        col_size   = len(t_pivot.columns.names)
         label_ls = []
         rec_filter = []
 
