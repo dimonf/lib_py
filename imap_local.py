@@ -12,11 +12,11 @@ class IMAP():
     re_num_uid = re.compile(r'^([0-9]+)\s+.*\bUID\s+([0-9]+).*')
     re_att_filename = re.compile(r'filename["\s]+(=[^"]+)')
     re_att_filesize = re.compile(r'base64["\s]+([0-9]+)')
-
+    re_box = re.compile(r'\((?P<flags>.*?)\) "(?P<delimiter>.*)" (?P<name>.*)')
 
     def __init__(self, *args, **kwargs):
         self._host, self._user, self._password, self._box = ['']*4
-        self.connect_ssl(*args, **kwargs)
+        #self.connect_ssl(*args, **kwargs)
 
     def bnumbers2str(self, numbers):
         ''' get messages numbers, returned by IMAP server to SEARCH command and
