@@ -1,5 +1,5 @@
 import datetime
-import email
+import email, email.parser
 import imaplib
 import os
 import re
@@ -65,7 +65,48 @@ class IMAP_account():
             self.con.select('"{}"'.format(mbox_name), readonly=False)
             out[mbox_name] = self.search(search_str)
 
-    ####
+    def b2dict_headers(self, msg_data, headers=['subject','to','from'], attachments=False):
+        '''converts binary imap return to structured dataset. uid and date is always extracted'''
+        out = []
+        for i in ['uid','date']:
+            if not i in headers:
+                headers.insert(0, i)
+
+        for response_part in msg_data:
+            if isinstance(response_part, tuple):
+                #get message uid
+
+                #
+                msg_str= {}
+                email_parser = email.parser.BytesFeedParser()
+                email_parser.feed(response_part[1])
+                msg = email_parser.close()
+                for header in headers:
+                    try:
+                        v = msg[header]
+                        msg_str[header] = self.extra_formatting(header, v)
+                    except:
+                        pass
+                out.append(msg_str)
+        return out
+
+
+
+    #### P A R S E R S ##############
+    def extra_formatting(self, header, val):
+        if header == ['date']:
+            return self.get_date(val)
+        return val
+
+    def get_date(self, data):
+        local_date_str = ''
+        date_tuple = email.utils.parsedate_tz(data)
+        if date_tuple:
+           local_date = datetime.datetime.fromtimestamp(
+                 email.utils.mktime_tz(date_tuple))
+           local_date_str = local_date.strftime("%Y-%b-%d %H:%M")
+        return local_date_str
+
     def parse_list_response(self, line):
         match = self.re_box.match(line.decode('utf-8'))
         flags, delimiter, mbox_name = match.groups()
@@ -87,7 +128,7 @@ class IMAP_account():
             out.append('{}Kb'.format(int(int(s)/1364)))
         return out
 
-    ####
+    #### I N T E R N A L S #############
     def check_conn(self):
         ''' check if there is active connection'''
         if not self.con:
