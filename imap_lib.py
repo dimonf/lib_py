@@ -15,7 +15,7 @@ class IMAP_account():
     #source code from https://pymotw.com/3/imaplib/
     att_dir = 'download_att'
     re_num_uid = re.compile(r'^([0-9]+)\s+.*\bUID\s+([0-9]+).*')
-    re_att_filename = re.compile(r'filename["\s]+(=[^"]+)')
+    re_att_filename = re.compile(r'filename["\s]+([^"]+)')
     re_att_filesize = re.compile(r'base64["\s]+([0-9]+)')
     re_box = re.compile(r'\((?P<flags>.*?)\) "(?P<delimiter>.*)" (?P<name>.*)')
 
@@ -54,6 +54,8 @@ class IMAP_account():
         self.check_conn()
         self.set_l_vals(locals())
         resp, [response] = self.con.uid('search', search_str)
+        if len(response) == 0:
+            return []
         return [u for u in response.decode('utf-8').split(' ')]
 
     def search_all_mboxes(self, search_str):
@@ -63,7 +65,10 @@ class IMAP_account():
         for line in mbox_data:
             flags, delimeter, mbox_name = self.parse_list_response(line)
             self.con.select('"{}"'.format(mbox_name), readonly=False)
-            out[mbox_name] = self.search(search_str)
+            s_out =  self.search(search_str)
+            if s_out:
+                out[mbox_name] = s_out
+        return out
 
     def b2dict_headers(self, msg_data, headers=['subject','to','from'], attachments=False):
         '''converts binary imap return to structured dataset. uid and date is always extracted'''
@@ -142,4 +147,6 @@ class IMAP_account():
             elif v:
                 self.par[k] = v
 
-
+'''
+search by Message-ID: (HEADER Message-ID <xxxxxxxxxx>
+'''
