@@ -14,7 +14,7 @@ import sys
 class IMAP_account():
     #source code from https://pymotw.com/3/imaplib/
     att_dir = 'download_att'
-    re_num_uid = re.compile(r'^([0-9]+)\s+.*\bUID\s+([0-9]+).*')
+    re_num_uid = re.compile(r'^(?P<num>[0-9]+)\s+.*\bUID\s+(?P<uid>[0-9]+).*')
     re_att_filename = re.compile(r'filename["\s]+([^"]+)')
     re_att_filesize = re.compile(r'base64["\s]+([0-9]+)')
     re_box = re.compile(r'\((?P<flags>.*?)\) "(?P<delimiter>.*)" (?P<name>.*)')
@@ -79,10 +79,11 @@ class IMAP_account():
 
         for response_part in msg_data:
             if isinstance(response_part, tuple):
-                #get message uid
+                #get message uid (stored in first part of tuple)
 
                 #
                 msg_str= {}
+                #parse headers (stored in second part of tuple)
                 email_parser = email.parser.BytesFeedParser()
                 email_parser.feed(response_part[1])
                 msg = email_parser.close()
