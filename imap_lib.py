@@ -17,6 +17,7 @@ class IMAP_account():
     re_num_uid = re.compile(r'^(?P<num>[0-9]+)\s+.*\bUID\s+(?P<uid>[0-9]+).*')
     re_att_filename = re.compile(r'filename["\s]+([^"]+)')
     re_att_filesize = re.compile(r'base64["\s]+([0-9]+)')
+    re_att = re.compile(r'base64["\s]+(?P<size>[0-9]+).+?filename["\s]+(?P<name>[^"]+)')
     re_box = re.compile(r'\((?P<flags>.*?)\) "(?P<delimiter>.*)" (?P<name>.*)')
 
     def __init__(self, host, user, password):
@@ -71,18 +72,22 @@ class IMAP_account():
         return out
 
     def b2dict_headers(self, msg_data, headers=['subject','to','from'], attachments=False):
-        '''converts binary imap return to structured dataset. uid and date is always extracted'''
+        '''converts binary imap return to structured dataset. uid and date are always extracted'''
         out = []
-        for i in ['uid','date']:
+        for i in ['date']:
             if not i in headers:
                 headers.insert(0, i)
+        try:
+            headers.remove('uid')
+        except ValueError:
+            pass
 
         for response_part in msg_data:
             if isinstance(response_part, tuple):
-                #get message uid (stored in first part of tuple)
-
-                #
                 msg_str= {}
+                #get message uid (stored in first part of tuple)
+                msg_str['uid'] = self.re_num_uid.match(response_part[0].decode()).group('uid')
+                #
                 #parse headers (stored in second part of tuple)
                 email_parser = email.parser.BytesFeedParser()
                 email_parser.feed(response_part[1])
@@ -94,6 +99,8 @@ class IMAP_account():
                     except:
                         pass
                 out.append(msg_str)
+            elif attachments:
+                msg_str['attachments'] = self.re_att.findall(response_part.decode())
         return out
 
 
