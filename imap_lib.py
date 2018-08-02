@@ -111,12 +111,40 @@ class IMAP_account():
                 msg_str['attachments'] = self.re_att.findall(response_part.decode())
         return out
 
-    def download_attachments(self, uids, dir=None):
+    def download_attachments(self, uids, dir=None, dry_run=False):
         #check if dir exists
         dir = self.check_dir(default='~/Downloads/attachments', tag='mail-att', dir=dir)
-
+        if not isinstance(uids, list):
+            uid = [uids]
         for uid in uids:
-            msg = self.con.uid('fetch', uid, '(RFC822)')
+            ok, data = self.con.uid('fetch', str(uid), '(RFC822)')
+            m = email.message_from_bytes(data[0][1])
+            if m.get_content_maintype() != 'multipart':
+                continue
+            for part in m.walk():
+                if part.get_content_maintype() == 'multipart':
+                    continue
+                if part.get('Content-Disposition') is None:
+                    continue
+
+                file_name = part.get_filename()
+                file_path = os.path.join(dir, file_name)
+                if os.path.isfile(file_path):
+                    file_path = os.path.join(dir,'{}_{}'.format(uid,file_name))
+
+                file_error=''
+                if not os.path.isfile(file_path):
+                    if not dry_run:
+                        fp = open(file_path, 'wb')
+                        try:
+                            fp.write(part.get_payload(decode=True))
+                        except TypeError:
+                            file_error = 'filetype ERROR: '
+                        fp.close()
+                    print(file_error+'   file: ' + file_path)
+                else:
+                    print("write error, file exists: " + file_path)
+
 
 
 
@@ -172,7 +200,7 @@ class IMAP_account():
             dir = self.par.get('dir_'+tag)
         if not dir:
             dir = os.path.expanduser(default)
-        self.set_l_vals({'dir_'+tag, dir_att})
+        self.set_l_vals({'dir_'+tag:dir})
 
         if not os.path.exists(dir):
             os.makedirs(dir)
