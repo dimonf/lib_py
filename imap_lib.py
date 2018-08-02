@@ -71,9 +71,18 @@ class IMAP_account():
                 out[mbox_name] = s_out
         return out
 
-    def b2dict_headers(self, msg_data, headers=['subject','to','from'], attachments=False):
-        '''converts binary imap return to structured dataset. uid and date are always extracted'''
+    def b2dict_headers(self, msg_data=None, uids=None, headers=['subject','to','from'], attachments=False):
+        '''converts binary imap return to structured dataset. uid and date are always extracted
+           msg_data shall be obtained via
+           con.uid('fetch',uids,'(BODY.PEEK[HEADER] UID BODYSTRUCTURE)')'''
+        #either uids or msg_data shall be available
+        if not msg_data:
+            if not uids:
+                raise Exception ('either msg_data or uids shall be provided')
+            ok, msg_data = self.con.uid('fetch', self.format_uids(uids),
+                '(BODY.PEEK[HEADER] UID BODYSTRUCTURE)')
         out = []
+        #insert compulsory headers and remove those that are handled manually
         for i in ['date']:
             if not i in headers:
                 headers.insert(0, i)
@@ -81,13 +90,12 @@ class IMAP_account():
             headers.remove('uid')
         except ValueError:
             pass
-
+        #
         for response_part in msg_data:
             if isinstance(response_part, tuple):
                 msg_str= {}
                 #get message uid (stored in first part of tuple)
                 msg_str['uid'] = self.re_num_uid.match(response_part[0].decode()).group('uid')
-                #
                 #parse headers (stored in second part of tuple)
                 email_parser = email.parser.BytesFeedParser()
                 email_parser.feed(response_part[1])
@@ -103,9 +111,26 @@ class IMAP_account():
                 msg_str['attachments'] = self.re_att.findall(response_part.decode())
         return out
 
+    def download_attachments(self, uids, dir=None):
+        #check if dir exists
+        dir = self.check_dir(default='~/Downloads/attachments', tag='mail-att', dir=dir)
+
+        for uid in uids:
+            msg = self.con.uid('fetch', uid, '(RFC822)')
+
+
+
 
 
     #### P A R S E R S ##############
+    def format_uids(self, uids):
+        if isinstance(uids, bytes):
+            return ','.join(uids.decode().split())
+        elif isinstance(uids, list):
+            return ','.join(uids)
+        else:
+            raise ValueError('unable define uids data type')
+
     def extra_formatting(self, header, val):
         if header == ['date']:
             return self.get_date(val)
@@ -142,6 +167,19 @@ class IMAP_account():
         return out
 
     #### I N T E R N A L S #############
+    def check_dir(self, default, tag, dir=None):
+        if not dir:
+            dir = self.par.get('dir_'+tag)
+        if not dir:
+            dir = os.path.expanduser(default)
+        self.set_l_vals({'dir_'+tag, dir_att})
+
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+        return(dir)
+
+
     def check_conn(self):
         ''' check if there is active connection'''
         if not self.con:
