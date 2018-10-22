@@ -8,8 +8,9 @@ import sys
 ''' use example:
     acc = IMAP_account(host='some.com',user='toster@some.com',password='1234')
     acc.list_mboxes()
-    acc.search(
- 
+    s_result = acc.search('(SUBJECT "invoice" SINCE "20-dec-2016" BEFORE "31-jan-2018" FROM xyz@otto.com")')
+    acc.b2dict_headers(uuids=s_result[:-2], attachments=True)
+    acc.download_attachments(uids=s_result)
 '''
 class IMAP_account():
     #source code from https://pymotw.com/3/imaplib/
@@ -72,7 +73,8 @@ class IMAP_account():
         return out
 
     def b2dict_headers(self, msg_data=None, uids=None, headers=['subject','to','from'], attachments=False):
-        '''converts binary imap return to structured dataset. uid and date are always extracted
+        '''converts binary imap return to structured dataset.
+           uid and date are always extracted
            msg_data shall be obtained via
            con.uid('fetch',uids,'(BODY.PEEK[HEADER] UID BODYSTRUCTURE)')'''
         #either uids or msg_data shall be available
@@ -144,11 +146,6 @@ class IMAP_account():
                     print(file_error+'   file: ' + file_path)
                 else:
                     print("write error, file exists: " + file_path)
-
-
-
-
-
 
     #### P A R S E R S ##############
     def format_uids(self, uids):
