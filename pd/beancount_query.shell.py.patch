@@ -1,0 +1,40 @@
+76d75
+<     start = max(0, num_entries - max_entries)
+78c77
+<             for index in range(start, num_entries)]
+---
+>             for index in range(min(num_entries, max_entries))]
+259c258
+<         self.run_parser(line)
+---
+>         return(self.run_parser(line))
+271c270
+<             self.dispatch(statement)
+---
+>             return(self.dispatch(statement))
+452a452,454
+>             elif output_format == "raw":
+>                 return(rrows)
+> 
+768c770
+< _SUPPORTED_FORMATS = ('text', 'csv')
+---
+> _SUPPORTED_FORMATS = ('text', 'csv', 'raw')
+771c773
+< def main():
+---
+> def main(args_fun=None):
+795c797,800
+<     args = parser.parse_args()
+---
+>     if args_fun:
+>         args = parser.parse_args(args_fun)
+>     else:
+>         args = parser.parse_args()
+829c834,837
+<         shell_obj.onecmd(query)
+---
+>         if args_fun:
+>             return shell_obj.onecmd(query)
+>         else:
+>             shell_obj.onecmd(query)
