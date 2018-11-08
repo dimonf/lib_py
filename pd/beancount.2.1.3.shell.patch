@@ -1,0 +1,67 @@
+--- beancount-2.1.3/beancount/query/shell.py	2018-08-06 21:10:32.000000000 +0300
++++ 00/shell_modified.py	2018-11-07 17:29:34.275591821 +0200
+@@ -256,7 +256,7 @@
+         Args:
+           line: The string to be parsed.
+         """
+-        self.run_parser(line)
++        return self.run_parser(line)
+ 
+     def run_parser(self, line, default_close_date=None):
+         """Handle statements via our parser instance and dispatch to appropriate methods.
+@@ -268,7 +268,7 @@
+         try:
+             statement = self.parser.parse(line,
+                                           default_close_date=default_close_date)
+-            self.dispatch(statement)
++            return self.dispatch(statement)
+         except query_parser.ParseError as exc:
+             print(exc, file=self.outfile)
+         except Exception as exc:
+@@ -450,6 +450,9 @@
+                                         self.outfile,
+                                         expand=self.vars['expand'])
+ 
++            elif output_format == 'raw':
++                return rrows
++
+             else:
+                 assert output_format not in _SUPPORTED_FORMATS
+                 print("Unsupported output format: '{}'.".format(output_format),
+@@ -765,10 +768,10 @@
+     return query_map
+ 
+ 
+-_SUPPORTED_FORMATS = ('text', 'csv')
++_SUPPORTED_FORMATS = ('text', 'csv', 'raw')
+ 
+ 
+-def main():
++def main(args_fun=None):
+     parser = version.ArgumentParser(description=__doc__)
+ 
+     parser.add_argument('-f', '--format', action='store', default=_SUPPORTED_FORMATS[0],
+@@ -792,7 +795,10 @@
+     parser.add_argument('query', nargs='*',
+                         help='A query to run directly')
+ 
+-    args = parser.parse_args()
++    if args_fun:
++        args = parser.parse_args(args_fun)
++    else:
++        args = parser.parse_args()
+ 
+     # Parse the input file.
+     def load():
+@@ -826,7 +832,10 @@
+             # standard input.
+             query = sys.stdin.read()
+ 
+-        shell_obj.onecmd(query)
++        if args_fun:
++            return shell_obj.onecmd(query)
++        else:
++            shell_obj.onecmd(query)
+ 
+     return 0
+ 
