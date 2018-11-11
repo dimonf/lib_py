@@ -205,6 +205,12 @@ class Bncount():
                     col_index += 2
                     #
                     add_label(records, col_template, '{0},{0}_curr')
+                elif isinstance(item,beancount.core.amount.Amount):
+                    records[-1].append(float(item.number))
+                    records[-1].append(item.currency)
+                    col_index += 2
+                    #
+                    add_label(records, col_template, '{0},{0}_curr')
                 else:
                     records[-1].append(item)
                     col_index += 1
