@@ -7,7 +7,7 @@ def_store = os.getenv("HOME") + "/.pandas"
 
 '''
  structure:
- - _global     : {        #holds all settings that can be applied to any pivot table (stored under tags)
+ - _global    : {        #holds all settings that can be applied to any pivot table (stored under tags)
         - f_row: {}             #defaults for filter section
         - opts  : {}             #defaults for opts section
         - f_col: {           #keyed array of settings for raw data view
