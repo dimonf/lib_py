@@ -317,7 +317,7 @@ def pd_infect():
         (pd.DataFrame, 'rtotal',_rtotal),
         (pd.DataFrame, 'btw',_between),
         (pd.core.series.Series, 'ugrep',_ugrep),
-        (pd.core.groupby.groupby.DataFrameGroupBy, 'rr', _regex_select_groupby)
+        (pd.core.groupby.DataFrameGroupBy, 'rr', _regex_select_groupby)
     ]
 
     for i in functions:
