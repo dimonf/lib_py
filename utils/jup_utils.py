@@ -13,20 +13,53 @@ def get_kernel_id():
          f.write(kernel_id)
    return kernel_id
 
-def get_root_dir():
-    '''returns root (top) directory relative path from any location within it.
-       Some shared resources, such as bulky data files with imported records,
-       are stored it predetermined location, e.g. [root]/data. It is convenient 
-       to have unified access to such resources from code of any notebook, 
-       located at any level within hirearchy. The root dir is indicated by 
-       placement of a file .jupyter_root_dir into it'''
+def get_closest_dir_by_function(test_function, start_dir=None):
+    '''get closest parent directory, which conforms to the test_function.
+       test_function must take one positional argument: testing 
+       directory, in txt fomrat, and return bool True/False'''
     import os
     
-    root_indicator = '.jupyter_root_dir'
-    next_up_dir = os.path.dirname(os.getcwd())
-    root_dir = None
-    while not root_dir:
-        next_up_dir = os.path.dirname(next_up_dir)
-        if os.path.exists(os.path.join(next_up_dir, root_indicator)):
-            root_dir = next_up_dir
-    return root_dir
+    if not start_dir:
+        start_dir = os.getcwd()
+    
+    test_dir = start_dir
+    target_dir = None
+    
+    while not target_dir:
+        #print('testing '+ test_dir)
+        if test_function(test_dir):
+            return test_dir
+        next_up_dir = os.path.dirname(test_dir)
+        if next_up_dir == test_dir:
+            raise Exception('file not found')
+        test_dir = next_up_dir
+            
+    return target_dir 
+
+def get_root_dir():
+    '''Get root dir from any notebook which is situated below it.
+       The root dir is designated by file root_indicator_file_name'''
+    import os
+    
+    root_indicator_file_name = '.jupyter_root_dir'
+    def test_function(test_dir):
+       return os.path.exists(os.path.join(test_dir, root_indicator_file_name))
+
+    return get_closest_dir_by_function(test_function)
+
+def get_git_dir():
+    '''Get (nearest) git root directory'''
+    import os
+
+    def test_function(test_dir):
+        return(os.path.isdir(os.path.join(test_dir, '.git')))
+
+def get_closest_file(name):
+    '''get the closest file (or dir) by the name within full path of cwd'''
+    import os
+    
+    def test_function(test_dir):
+        return os.path.exists(os.path.join(test_dir, name))
+    
+    target_dir = get_closest_dir_by_function(test_function)
+    return os.path.join(target_dir, name)
