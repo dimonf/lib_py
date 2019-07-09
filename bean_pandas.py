@@ -16,3 +16,11 @@ class BeanPandas():
          query('select date,account,number where account~{} and year ={}",'"assets"','2016')
        '''
        return query.run_query(self._entries, self._options_map, query_str, *args)
+
+   def query2pd(self, query_str, *args):
+       '''
+       same functionality as 'query' method; output is converted to proper DataFrame
+       Limitations:
+         - inventory type is not handled (convert it into decimal in query)
+       '''
+       dt_types, dt_set = self.query(query_str, *args)
