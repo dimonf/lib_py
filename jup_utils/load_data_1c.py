@@ -1,15 +1,17 @@
 #this script is designed to be sourced from a jupyter notebook via %run
 
 '''
-master file is updated for changes in 1c accounting system only. In 1c there is
-a 'constant' which holds the date, at which the previous data dump is still valid.
-For new transaction the value of this constant is replaced with the transaction date.
-As new data dump precedure is done, the constant value holds the date of the last
-transaction which made its way into the dump file.
-So, the method is not very efficient as it does not trace individual transactions; rather
-it includes one single range of the whole 1c transaction's database spanning from the date
-of the earliest of amended/new transaction since last data dump till the older, explicitly
-specified date (usually, the current date)
+master file is updated for changes in accounting system only. There is a
+constant which holds the date in accounting app, before which the data stays
+intact after previous dump.  For new/amended transaction the value of this
+constant is replaced with the transaction date, if transaction date is before
+the constant date. Also, the constant is overwritten with latest transaction
+date in a set, produced by data dump utility.
+So, the method is not very efficient as it does not trace individual
+modifications; rather it includes one single lot of transactions 
+wich spans from the date of the earliest of amended/new transaction
+since last data dump till the older, explicitly specified date (usually, the
+current date)
 '''
 
 import pandas as pd, numpy as np, os, re, shutil, glob
@@ -18,15 +20,24 @@ HOME_DIR = os.path.expanduser("~")
 IMPORT_DATA_FILE_GLOB = '1c_trx_dump.txt*'
 IMPORT_DATA_FILE_NAME = ""
 LOCAL_DATA_PATH = os.path.join(HOME_DIR,'jup','_data',"import_1c.txt.gz")
-dtypes={n:'str' for n in 'period ccenter account dtct curr'.split()}
+DTYPES = {
+        'account' : 'str',
+        'ccenter' : 'str',
+        'curr'    : 'str',
+        'date'    : 'str',
+        'dtct'    : 'str',
+        'period'  : 'str',
+        }
 
 class _gen():
     pass
 
 def read_local_data(file_name=LOCAL_DATA_PATH):
     if os.path.isfile(file_name):
-        return pd.read_csv(file_name, header=0, index_col = False,
-                 dtype=dtypes, parse_dates=['date'])
+        tmp_df = pd.read_csv(file_name, header=0, index_col = False,
+                dtype=DTYPES, parse_dates=['date'])
+        return tmp_df
+
     else:
         return False
 
@@ -48,8 +59,8 @@ def update_local_data():
         return None
     #get imported data
     dt_in = pd.read_csv(import_data_path, header=0, sep="\t",
-        encoding="windows-1251", dtype=dtypes, parse_dates=['date'])
-    #get rid of intermediary transactions of 1C system
+        encoding="windows-1251", dtype=DTYPES, parse_dates=['date'] )
+    #get rid of intermediary transactions 
     dt_in = dt_in.query('account !="P1"')
     #
     #update local data
@@ -90,4 +101,4 @@ def get_data_set():
     rset.dt_source = read_data()
 
     return rset
-#del dtypes
+#del DTYPES
