@@ -48,3 +48,22 @@ def get_name_dict(names):
                     "\n the name "+t_n +" seems to be aloread in the lsit")
             names_d[t_n] = n
     return names_d
+
+def fnselect(ls, pattern):
+    '''select entities by applying wildcard-based criteria.
+       elements of the list are converted to string first
+    '''
+    import fnmatch
+
+    def test_item(item, pattern):
+        for i in range(min(len(item), len(pattern))):
+            if not fnmatch.fnmatch(item[i], pattern[i]):
+                return False
+        return True
+
+
+    if type(pattern) is str:
+        pattern = [pattern]
+
+    ls_out = [item for item in ls if test_item(item, pattern)]
+    return ls_out
