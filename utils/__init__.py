@@ -50,14 +50,32 @@ def get_name_dict(names):
     return names_d
 
 def fnselect(ls, pattern):
-    '''select entities by applying wildcard-based criteria.
-       elements of the list are converted to string first
+    '''Select elements from iterable by applying wildcard-based
+       case-insensetive pattern.  Both, elements and pattern, are
+       operated on as collections (converted from scalars if necessary).
+       If length of an element and pattern differs, test is performed
+       untill the shortest list exhausted.
+
+       Args:
+         ls      : iterable of scalars or indexable collection type
+         pattern : string or indexable collection of string
     '''
     import fnmatch
+    from collections.abc import Sequence
 
+    lowest_common = -1
     def test_item(item, pattern):
-        for i in range(min(len(item), len(pattern))):
-            if not fnmatch.fnmatch(item[i], pattern[i]):
+        nonlocal lowest_common
+        if isinstance(item, str):
+            item = [item]
+        elif not isinstance(item, Sequence):
+            item = [str(item)]
+
+        if lowest_common == -1:
+            lowest_common = min(len(item), len(pattern))
+
+        for i in range(lowest_common):
+            if not fnmatch.fnmatch(str(item[i]), pattern[i]):
                 return False
         return True
 

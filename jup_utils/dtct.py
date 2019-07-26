@@ -1,6 +1,5 @@
 import ipywidgets as widgets
 import pandas as pd
-from lib_py.utils import jup_utils
 
 '''
   interactive dt-ct table
