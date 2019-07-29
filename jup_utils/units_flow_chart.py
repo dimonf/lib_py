@@ -1,97 +1,280 @@
 import ipywidgets as widgets
-from IPython.display import display
+from IPython.display import display, HTML
 import pandas as pd, numpy as np
+import fnmatch
+
 #import ipywidgets as widgets, qgrid, ipysheet
 #import re
 '''
-Graphic representation for an arbitrary dataset wich aims to show units flow through the group of nodes
+Graphic representation for an arbitrary dataset wich aims to show units flow
+through the group of nodes.
 NOTES:
     - input data fields (must be in this order, original columns name are discarded):
-      - date        : date of a transaction          : datetime
-      - node_from : node from which units departed : str
-      - node_to : node to which units flow       : str
-      - units       : aggregated values              : integer, float
+      - date      : date of a transaction          : datetime
+      - domain    : node from which units departed : str
+      - corr_node : node to which units flow       : str
+      - units     : aggregated values              : integer, float
 Args:
-    - threshold: combine less significant node_to into one single 'other' node. Threshold
+    - threshold: combine less significant corr_node into one single 'other' node. Threshold
       can be specified in units (int) or as a number of branches in output graph (n[N], where N - 
       is total number of branches)
 '''
-def get_interface(dt_records):
+class Test():
+    def __init__(self, dt_records):
+        self.dt = dt_records
+        self.a = 12
 
-    def w_save_click(b):
-        b.description = 'Done!'
-        t_options = list(w_node_from.options)
-        t_options.append('z')
-        w_node_from.options = t_options
-        with w_output:
-            print('done_done')
+class UnitsFlow():
+    def __init__(self, dt_records):
+        self.a = 2
+        self.dt = dt_records
 
-    def w_restore_click(b):
-        with w_output:
-            print(w_date_start.value, type(w_date_start.value))
+    def get_interface(self):
 
-    def w_run_click(b):
-        pass
+        #w_output = widgets.Output(layout={'width':'100%', 'height':'520px'})
+        w_output = widgets.Output()
 
-    # ---
-    def get_years_range():
-        """ Returns:
-           list of years
+        def w_save_click(b):
+            b.description = 'Done!'
+            t_options = list(self.w_domain.options)
+            t_options.append('z')
+            self.w_domain.options = t_options
+            with w_output:
+                print('done_done')
+
+        def w_restore_click(b):
+            with w_output:
+                print(self.w_date_start.value, type(self.w_date_start.value))
+
+        @w_output.capture(clear_output=True)
+        def w_run_click(b):
+            date_start, date_end = [w.value for w in (self.w_date_start, self.w_date_end)]
+            domains_selected = self.w_domain.value
+            query_str = '@date_start <= date <= @date_end and domain in @domains_selected'
+            dt_after_filter = self.dt.query(query_str)
+            display(HTML(self.get_graph(dt_after_filter).render()))
+
+        # ---
+        def get_years_range():
+            """ Returns:
+               list of years
+            """
+            t_year_begin, t_year_end = [d.year for d in self.dt['date'].apply(['min','max'])]
+            return list(range(t_year_begin, t_year_end + 1))
+
+        # ===
+
+        # ---
+        self.w_date_start = widgets.DatePicker(
+                value = self.dt['date'].min(),
+                description = "begin"
+                )
+
+        # ---
+        self.w_date_end = widgets.DatePicker(
+                value = self.dt['date'].max(),
+                description = "end"
+                )
+
+        # ---
+        t_domain = sorted(self.dt['domain'].unique())
+        self.w_domain = widgets.SelectMultiple(
+                options = t_domain,
+                value = [t_domain[-1]],
+                rows = 5,
+                description = 'from',
+                disabled = False
+                )
+        del t_domain
+        # ---
+        self.w_save = widgets.Button(description = "Save")
+        self.w_save.on_click(w_save_click)
+        # ---
+        self.w_restore = widgets.Button(description = "Restore")
+        self.w_restore.on_click(w_restore_click)
+        # ---
+        self.w_run = widgets.Button(description = "Run")
+        self.w_run.on_click(w_run_click)
+        # ---
+        self.w_self_tr = widgets.Checkbox(
+                value=True,
+                description='Ignore transactions with self',
+                )
+        # ---
+        w_html = widgets.HTML()
+
+
+        v_box_buttons = widgets.VBox([self.w_save, self.w_restore, self.w_run])
+        v_box_dates = widgets.VBox([self.w_date_start, self.w_date_end])
+        h_box_toolbar = widgets.Box([v_box_buttons, v_box_dates, self.w_domain, self.w_self_tr])
+
+        return widgets.VBox([h_box_toolbar, w_output])
+
+    def drill(self, pat):
+        """ returns transactions for a single edge.
         """
-        t_year_begin, t_year_end = [d.year for d in dt_records['date'].apply(['min','max'])]
-        return list(range(t_year_begin, t_year_end + 1))
+        columns = []
+        matched_labels_txt = []
+        matched_labels = []
+        for lbl, records in self.gr_dt:
+            lbl_txt = '_'.join(lbl[:])
+            if len(columns) == 0:
+                columns = records.columns
+            if fnmatch.fnmatch(lbl_txt, pat):
+                matched_labels_txt.append(lbl_txt)
+                matched_labels.append(lbl)
 
-    # ===
-    w_date_start = widgets.DatePicker(
-            value = dt_records['date'].min(),
-            description = "begin"
-            )
-
-    # ---
-    w_date_end = widgets.DatePicker(
-            value = dt_records['date'].max(),
-            description = "end"
-            )
-
-    # ---
-    t_node_from = sorted(dt_records['node_from'].unique())
-    w_node_from = widgets.SelectMultiple(
-            options = t_node_from,
-            value = [t_node_from[-1]],
-            rows = 5,
-            description = 'from',
-            disabled = False
-            )
-    del t_node_from
-    # ---
-    w_save = widgets.Button(description = "Save")
-    w_save.on_click(w_save_click)
-    # ---
-    w_restore = widgets.Button(description = "Restore")
-    w_restore.on_click(w_restore_click)
-    # ---
-    w_run = widgets.Button(description = "Run")
-    # ---
-    w_output = widgets.Output()
-    # ---
+        if len(matched_labels_txt) > 1:
+            lbl_txt = '\n'.join(matched_labels_txt)
+            print("More then one edge satisfies search criteria:\n>>>>>>>\n" + lbl_txt + "\n>>>>>>>>")
+            #return None
+            #return "More then one edge satisfies search criteria:\n>>>>>>>\n" + lbl_txt + "\n>>>>>>>>"
+        if len(matched_labels) > 0:
+            return pd.concat([self.gr_dt.get_group(l).ex.totals() for l in matched_labels],axis=0)
+        else:
+            return pd.DataFrame(columns = columns)
 
 
-    v_box_buttons = widgets.VBox([w_save, w_restore, w_run])
-    v_box_dates = widgets.VBox([w_date_start, w_date_end])
-    h_box_toolbar = widgets.Box([v_box_buttons, v_box_dates, w_node_from])
+    def map_from_row(self, row, mf):
+        from collections import abc
 
-    return widgets.VBox([h_box_toolbar, w_output])
-
-def get_node_names(dt_row, node_from_col, node_to_col, map_nodes):
-    """ designed to be called by pd.DataFrame.apply method
+        """
         Args:
-          dt_row: a row from a dataframe
-          node_from_col: collumn name
-          node_to_col: column name
+        mf:    list of either:
+               - tuples of the following structure:
+                 (function, {par_a: 'x', par_b: 'y'}
+               - list of such tuples.
+
+        Each tuple returns a value
         Returns:
-          tuple for node_from / node_to columns, after
+        pd.Series (if len(map_s) = 1), otherwise pd.Dataframe with number of columns
+        equial to len(map_s)
 
-    """
+        in case element of map_s is a list of tuples, each function from the list
+        applied to a row, untill the return value is not Null. The rest of the list
+        is ignored.
+        NOTE:
+        development of the function is abandoned.
+        the function pd.DataFrame.apply proved to be very slow (due to creating of
+        Series for each row?).  It was decided to use pd.Series.apply instead
 
-def get_report(dt_records, threshold=0):
-    pass
+        tmp_a = rset.dt_m.apply(units_flow_chart.map_from_row, axis=1, raw=True, result_type='expand',mf=[
+            {'func': get_mapping, 'kwargs': {'map_data': MAP_NAMES, 'default': 'N/A'},'col':"source"},
+            [{'func': get_mapping, 'kwargs': {'map_data': MAP_SUB}, 'col':"sub1"},
+             {'func': get_mapping, 'kwargs': {'map_data': MAP_ACC}, 'col':"account"},
+             {'func': get_mapping, 'kwargs': {'map_data': MAP_NAMES}, 'col':"corr"}
+            ],
+        ])
+        tmp_a.columns = ['domain','corr_node']
+
+        """
+        row_out = []
+        for fn_set in mf:
+            val = np.nan
+            if isinstance(fn_set, abc.Mapping):
+                fn_set = [fn_set]
+
+            for fn in fn_set:
+                val = fn['func'](val = row[fn['col']], **fn['kwargs'])
+                if val:
+                    break
+            row_out.append(val)
+
+        return row_out
+
+    def get_graph(self, dt=[], threshold=None):
+        """ Compile diagram from list of transactions, collected from various
+        sources (domain).  Each transaction must contain at least the following
+        fields(columns):
+        - date       : date of a transaction          : datetime
+        - domain     : node from which units departed : str
+        - corr_node  : node to which units flow       : str
+        - units      : aggregated values              : integer, float
+        Attr         :
+        - self.dt :                                : pd.DataFrame
+        """
+        from graphviz import Digraph
+
+        #rel_master dict: {sorted([node_a, node_b]): node_a|node_b}
+        rel_master = {}
+        nodes = {}
+        if len(dt) == 0:
+            dt = self.dt
+        domains = dt['domain'].unique()
+
+        def check_relationship_master(domain, corr_node):
+            """input records are collected from different domains, which may have
+            transactions between each other. Such transactions are usualy reflected
+            by both sides, receiving and sending. One set shall be removed.  The
+            following methods are implemented:
+            - detect first transaction between two domains and elect 'master'
+              domain in this 'relationship'. Records for this relationship
+              recorded under other domain are ignored
+            - use order of master list of domains to determine 'winning' domain
+            """
+            key = ','.join(sorted([domain, corr_node]))
+            rel_m = rel_master.get(key)
+            if not rel_m:
+                rel_master[key] = domain
+                return True
+            elif rel_m== domain:
+                return True
+            else:
+                return False
+
+
+        def create_node(id, rep=None, shape='ellipse'):
+            if nodes.get(id):
+                return
+
+            if not rep:
+                rep = id
+            if id in domains:
+                shape = 'component'
+            dot.node(id, rep, shape=shape)
+            nodes[id] = 'ok'
+
+        def create_edge(node_a, node_b, units_total):
+            pref = ''
+            if units_total > 0:
+                pref = '*'
+                node_a, node_b = node_b, node_a
+            else:
+                units_total = -units_total
+            total_str = "{2}${0:,.{1}f}".format(units_total, 0, pref)
+            dot.edge(node_a, node_b, label=total_str)
+
+        def link_nodes(lbl, records):
+            """Args:
+                lbl: ('domain','corr_node','dt|ct'): tuple
+               NOTE:
+               Records can be duplicated, as single transaction can be
+               (and in some systems, must be) reflected by both sides,
+               sender and receiver
+            """
+            if self.w_self_tr.value and (lbl[0] == lbl[1]):
+                return
+            if not check_relationship_master(domain=lbl[0], corr_node=lbl[1]):
+                return
+
+            for lb in lbl[:2]:
+                create_node(lb)
+
+            create_edge(lbl[0], lbl[1], records['units'].sum())
+
+
+        dot = Digraph(comment = "node movement report",
+                      filename='units_flow_chart.gv',
+                      format='svg',
+                      graph_attr={'rankdir':'LR'})
+
+        self.gr_dt = dt.groupby(['domain',
+                    'corr_node',
+                     dt['units'].apply(lambda x: 'dt' if x>0 else 'ct')
+                     ])
+
+
+        for lbl, records in self.gr_dt:
+            link_nodes(lbl, records)
+
+        return dot

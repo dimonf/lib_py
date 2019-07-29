@@ -1,5 +1,6 @@
 import pandas as pd
 from .load_data_1c import get_data_set as get_data_set_for_1c
+from .units_flow_chart import UnitsFlow
 #from . import _dtct as dtct
 
 def tb_map(s, date_begin, date_end):
