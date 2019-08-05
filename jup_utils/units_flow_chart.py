@@ -2,6 +2,8 @@ import ipywidgets as widgets
 from IPython.display import display, HTML
 import pandas as pd, numpy as np
 import fnmatch
+import yaml
+import re
 
 #import ipywidgets as widgets, qgrid, ipysheet
 #import re
@@ -135,52 +137,57 @@ class UnitsFlow():
             return pd.DataFrame(columns = columns)
 
 
-    def map_from_row(self, row, mf):
-        from collections import abc
-
+    @classmethod
+    def map_value(cls, item, map_scheme):
+        """ returns Series for groupping purpose (designed to be fed to
+            function pd.DataFrame.groupby
+            map_scheme is yaml file of format
         """
-        Args:
-        mf:    list of either:
-               - tuples of the following structure:
-                 (function, {par_a: 'x', par_b: 'y'}
-               - list of such tuples.
+        for map_l in map_scheme:
+            got_match = True
+            map_out = map_l['_map_']
+            for k,v in map_l.items():
+               if k[0] == k[-1] == '_':
+                   continue
+               elif not v.match(item):
+                   got_match = False
+                   break
+            if got_match:
+                break
 
-        Each tuple returns a value
-        Returns:
-        pd.Series (if len(map_s) = 1), otherwise pd.Dataframe with number of columns
-        equial to len(map_s)
+        return map_out
 
-        in case element of map_s is a list of tuples, each function from the list
-        applied to a row, untill the return value is not Null. The rest of the list
-        is ignored.
-        NOTE:
-        development of the function is abandoned.
-        the function pd.DataFrame.apply proved to be very slow (due to creating of
-        Series for each row?).  It was decided to use pd.Series.apply instead
+    @classmethod
+    def map_values(cls, s, map_scheme):
+        for map_l in map_scheme:
+            map_out = map_l['_map_']
+            for k,v in map_l.items():
+                if k[0] == k[-1] == '_':
+                    continue
+                elif not v.match(s['k']):
+                    return None
 
-        tmp_a = rset.dt_m.apply(units_flow_chart.map_from_row, axis=1, raw=True, result_type='expand',mf=[
-            {'func': get_mapping, 'kwargs': {'map_data': MAP_NAMES, 'default': 'N/A'},'col':"source"},
-            [{'func': get_mapping, 'kwargs': {'map_data': MAP_SUB}, 'col':"sub1"},
-             {'func': get_mapping, 'kwargs': {'map_data': MAP_ACC}, 'col':"account"},
-             {'func': get_mapping, 'kwargs': {'map_data': MAP_NAMES}, 'col':"corr"}
-            ],
-        ])
-        tmp_a.columns = ['domain','corr_node']
+        return map_out
 
+
+    @classmethod
+    def compile_mapping(cl, map_scheme_raw):
+        """ compile regular expression for all key-value pair,
+        except where the key is a special name, which starts and ends with '_'
         """
-        row_out = []
-        for fn_set in mf:
-            val = np.nan
-            if isinstance(fn_set, abc.Mapping):
-                fn_set = [fn_set]
+        import copy
 
-            for fn in fn_set:
-                val = fn['func'](val = row[fn['col']], **fn['kwargs'])
-                if val:
-                    break
-            row_out.append(val)
+        map_scheme = copy.deepcopy(map_scheme_raw)
+        for k_t, lower_group in map_scheme.items():
+            for item in lower_group:
+                for k,v in item.items():
+                    if k[0] == k[-1] == '_':
+                        continue
+                    item[k] = re.compile(v, re.IGNORECASE)
 
-        return row_out
+        return map_scheme
+
+
 
     def get_graph(self, dt=[], threshold=None):
         """ Compile diagram from list of transactions, collected from various
