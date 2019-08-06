@@ -2,8 +2,8 @@ import ipywidgets as widgets
 from IPython.display import display, HTML
 import pandas as pd, numpy as np
 import fnmatch
-import yaml
-import re
+import yaml, json
+import re, datetime
 
 #import ipywidgets as widgets, qgrid, ipysheet
 #import re
@@ -27,6 +27,7 @@ class Test():
         self.a = 12
 
 class UnitsFlow():
+    controls_dump_file = 'units_flow_controls.tmp'
     def __init__(self, dt_records):
         self.a = 2
         self.dt = dt_records
@@ -36,7 +37,7 @@ class UnitsFlow():
         #w_output = widgets.Output(layout={'width':'100%', 'height':'520px'})
         w_output = widgets.Output()
 
-        def w_save_click(b):
+        def tmp_click(b):
             b.description = 'Done!'
             t_options = list(self.w_domain.options)
             t_options.append('z')
@@ -44,15 +45,54 @@ class UnitsFlow():
             with w_output:
                 print('done_done')
 
+        def w_save_click(b):
+            """dump values of selected interactive controls to json file """
+            CONTROLS = 'w_date_start,w_date_end,w_domain,w_self_tr'.split(',')
+            def json_handler(obj):
+                if isinstance(obj, (datetime.datetime, datetime.date)):
+                    return obj.isoformat()
+
+            config_out = {}
+            for k in CONTROLS:
+                config_out[k] = getattr(self,k).value
+
+            with open(self.controls_dump_file, 'w') as fl:
+                json.dump(config_out, fl, default=json_handler)
+            #b.description = 'Saved'
+
+
         def w_restore_click(b):
-            with w_output:
-                print(self.w_date_start.value, type(self.w_date_start.value))
+            """restore values previously saved by w_save_click"""
+            import sys
+            def json_decoder(d):
+                d_out = {}
+                for k,v in d.items():
+                    try:
+                        v = datetime.datetime.strptime(v, '%Y-%m-%dT%H:%M:%S')
+                    except:
+                        pass
+                    d_out[k] = v
+                return d_out
+
+            try:
+                with open(self.controls_dump_file, 'r') as fl:
+                    config_in = json.load(fl, object_hook=json_decoder)
+            except FileNotFoundError:
+                return
+
+            for k,v in config_in.items():
+                widget = getattr(self, k)
+                if widget._view_name == 'SelectMultipleView' and type(v) == list:
+                    v = tuple(set(widget.options) & set(v))
+                widget.value = v
+
+            #b.description = 'Restored'
 
         @w_output.capture(clear_output=True)
         def w_run_click(b):
             date_start, date_end = [w.value for w in (self.w_date_start, self.w_date_end)]
             domains_selected = self.w_domain.value
-            query_str = '@date_start <= date <= @date_end and domain in @domains_selected'
+            query_str = '(@date_start <= date <= @date_end) and (domain in @domains_selected)'
             dt_after_filter = self.dt.query(query_str)
             display(HTML(self.get_graph(dt_after_filter).render()))
 
@@ -206,7 +246,12 @@ class UnitsFlow():
         rel_master = {}
         nodes = {}
         if len(dt) == 0:
-            dt = self.dt
+            dot = Digraph(comment = "node movement report",
+                      filename='units_flow_chart.gv',
+                      format='svg',
+                      graph_attr={'rankdir':'LR'})
+            return dot
+            #dt = self.dt
         domains = dt['domain'].unique()
 
         def check_relationship_master(domain, corr_node):
