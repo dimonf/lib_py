@@ -275,7 +275,7 @@ class UnitsFlow():
             if not rel_m:
                 rel_master[key] = domain
                 return True
-            elif rel_m== domain:
+            elif rel_m == domain:
                 return True
             else:
                 return False
@@ -292,19 +292,21 @@ class UnitsFlow():
             dot.node(id, rep, shape=shape)
             nodes[id] = 'ok'
 
-        def create_edge(node_a, node_b, units_total):
+        def create_edge(node_master, node_corr, units_total):
             pref = ''
             if units_total > 0:
                 pref = '*'
-                node_a, node_b = node_b, node_a
+                node_from, node_to  = node_corr, node_master
             else:
                 units_total = -units_total
-            total_str = "{2}${0:,.{1}f}".format(units_total, 0, pref)
-            dot.edge(node_a, node_b, label=total_str)
+                node_from, node_to  = node_master, node_corr
 
-        def link_nodes(lbl, records):
+            total_str = "{2}${0:,.{1}f}".format(units_total, 0, pref)
+            dot.edge(node_from, node_to, label=total_str)
+
+        def link_nodes(lbl, total):
             """Args:
-                lbl: ('domain','corr_node','dt|ct'): tuple
+                lbl: ('domain','corr_node'): tuple
                NOTE:
                Records can be duplicated, as single transaction can be
                (and in some systems, must be) reflected by both sides,
@@ -315,19 +317,10 @@ class UnitsFlow():
             if not check_relationship_master(domain=lbl[0], corr_node=lbl[1]):
                 return
 
-            for lb in lbl[:2]:
+            for lb in lbl:
                 create_node(lb)
 
-            create_edge(lbl[0], lbl[1], records['units'].sum())
-
-
-        def groupby_flow_direction(units):
-            if self.w_net_tr.value:
-                return 'dt'
-            elif units > 0:
-                return 'dt'
-            elif units < 0:
-                return 'ct'
+            create_edge(lbl[0], lbl[1], total)
 
         dot = Digraph(comment = "node movement report",
                       filename='units_flow_chart.gv',
@@ -336,11 +329,19 @@ class UnitsFlow():
 
         self.gr_dt = dt.groupby(['domain',
                     'corr_node',
-                     dt['units'].apply(groupby_flow_direction)
-                     ])
+                    dt['units'].apply(lambda x: 'dt' if x>0 else 'ct')
+        ])
 
+        totals = self.gr_dt['units'].sum()
+        if self.w_net_tr.value:
+            labels = totals.index.droplevel(2).unique()
+        else:
+            labels = totals.index
 
-        for lbl, records in self.gr_dt:
-            link_nodes(lbl, records)
+        for lbl in labels:
+            link_nodes(lbl[:2], totals.loc[lbl].sum())
+
+#        for lbl, records in self.gr_dt:
+#            link_nodes(lbl, records)
 
         return dot
