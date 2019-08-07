@@ -143,12 +143,18 @@ class UnitsFlow():
                 description='Ignore transactions with self',
                 )
         # ---
+        self.w_net_tr = widgets.Checkbox(
+                value=False,
+                description='net off opposite transactions'
+                )
+        # ---
         w_html = widgets.HTML()
 
 
         v_box_buttons = widgets.VBox([self.w_save, self.w_restore, self.w_run])
         v_box_dates = widgets.VBox([self.w_date_start, self.w_date_end])
-        h_box_toolbar = widgets.Box([v_box_buttons, v_box_dates, self.w_domain, self.w_self_tr])
+        v_box_options = widgets.VBox([self.w_self_tr, self.w_net_tr])
+        h_box_toolbar = widgets.Box([v_box_buttons, v_box_dates, self.w_domain, v_box_options])
 
         return widgets.VBox([h_box_toolbar, w_output])
 
@@ -172,7 +178,7 @@ class UnitsFlow():
             #return None
             #return "More then one edge satisfies search criteria:\n>>>>>>>\n" + lbl_txt + "\n>>>>>>>>"
         if len(matched_labels) > 0:
-            return pd.concat([self.gr_dt.get_group(l).ex.totals() for l in matched_labels],axis=0)
+            return pd.concat([self.gr_dt.get_group(l) for l in matched_labels],axis=0).ex.totals()
         else:
             return pd.DataFrame(columns = columns)
 
@@ -315,6 +321,14 @@ class UnitsFlow():
             create_edge(lbl[0], lbl[1], records['units'].sum())
 
 
+        def groupby_flow_direction(units):
+            if self.w_net_tr.value:
+                return 'dt'
+            elif units > 0:
+                return 'dt'
+            elif units < 0:
+                return 'ct'
+
         dot = Digraph(comment = "node movement report",
                       filename='units_flow_chart.gv',
                       format='svg',
@@ -322,7 +336,7 @@ class UnitsFlow():
 
         self.gr_dt = dt.groupby(['domain',
                     'corr_node',
-                     dt['units'].apply(lambda x: 'dt' if x>0 else 'ct')
+                     dt['units'].apply(groupby_flow_direction)
                      ])
 
 
