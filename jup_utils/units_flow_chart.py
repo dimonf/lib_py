@@ -148,12 +148,17 @@ class UnitsFlow():
                 description='net off opposite transactions'
                 )
         # ---
+        self.w_align_domains = widgets.Checkbox(
+                value=False,
+                description='align domain nodes'
+                )
+        # ---
         w_html = widgets.HTML()
 
 
         v_box_buttons = widgets.VBox([self.w_save, self.w_restore, self.w_run])
         v_box_dates = widgets.VBox([self.w_date_start, self.w_date_end])
-        v_box_options = widgets.VBox([self.w_self_tr, self.w_net_tr])
+        v_box_options = widgets.VBox([self.w_self_tr, self.w_net_tr, self.w_align_domains])
         h_box_toolbar = widgets.Box([v_box_buttons, v_box_dates, self.w_domain, v_box_options])
 
         return widgets.VBox([h_box_toolbar, w_output])
@@ -257,8 +262,7 @@ class UnitsFlow():
                       format='svg',
                       graph_attr={'rankdir':'LR'})
             return dot
-            #dt = self.dt
-        domains = dt['domain'].unique()
+        domains = sorted(dt['domain'].unique())
 
         def check_relationship_master(domain, corr_node):
             """input records are collected from different domains, which may have
@@ -320,7 +324,7 @@ class UnitsFlow():
             for lb in lbl:
                 create_node(lb)
 
-            create_edge(lbl[0], lbl[1], total)
+            create_edge(*lbl, total)
 
         dot = Digraph(comment = "node movement report",
                       filename='units_flow_chart.gv',
@@ -341,7 +345,18 @@ class UnitsFlow():
         for lbl in labels:
             link_nodes(lbl[:2], totals.loc[lbl].sum())
 
-#        for lbl, records in self.gr_dt:
-#            link_nodes(lbl, records)
+        if self.w_align_domains.value:
+            with dot.subgraph(name='scale', node_attr={'shape':'box'}) as c:
+                dot.edges(list(range(len(domains))))
+            for d in enumerate(domains):
+                #with dot.subgraph() as s:
+                   #s.attr(rank='same')
+                   #s.node()
+
+
+
+
+
+
 
         return dot
