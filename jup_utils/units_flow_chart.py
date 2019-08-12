@@ -94,7 +94,7 @@ class UnitsFlow():
             domains_selected = self.w_domain.value
             query_str = '(@date_start <= date <= @date_end) and (domain in @domains_selected)'
             dt_after_filter = self.dt.query(query_str)
-            display(HTML(self.get_graph(dt_after_filter).render()))
+            display(HTML(self.get_graph(dt_after_filter)))
 
         # ---
         def get_years_range():
@@ -261,7 +261,7 @@ class UnitsFlow():
                       filename='units_flow_chart.gv',
                       format='svg',
                       graph_attr={'rankdir':'LR'})
-            return dot
+            return dot.render()
         domains = sorted(dt['domain'].unique())
 
         def check_relationship_master(domain, corr_node):
@@ -306,7 +306,7 @@ class UnitsFlow():
                 node_from, node_to  = node_master, node_corr
 
             total_str = "{2}${0:,.{1}f}".format(units_total, 0, pref)
-            dot.edge(node_from, node_to, label=total_str)
+            dot.edge(node_from, node_to, label=total_str, weight="0")
 
         def link_nodes(lbl, total):
             """Args:
@@ -345,18 +345,15 @@ class UnitsFlow():
         for lbl in labels:
             link_nodes(lbl[:2], totals.loc[lbl].sum())
 
-        if self.w_align_domains.value:
-            with dot.subgraph(name='scale', node_attr={'shape':'box'}) as c:
-                dot.edges(list(range(len(domains))))
-            for d in enumerate(domains):
-                #with dot.subgraph() as s:
-                   #s.attr(rank='same')
-                   #s.node()
+        if self.w_align_domains.value and len(domains)>1:
+            with dot.subgraph(name='scale', edge_attr={'weight':'10'},
+                    graph_attr={'rankdir':'LR'}, node_attr={'shape':'box'}) as c:
+                l = list(range(len(domains)))
+                c.edges(zip(map(str,l[:-1]),map(str,l[1:])))
+            for i,n in enumerate(domains):
+                with dot.subgraph() as c:
+                    c.attr(rank='same')
+                    c.node(str(i))
+                    c.node(n)
 
-
-
-
-
-
-
-        return dot
+        return dot.render()
