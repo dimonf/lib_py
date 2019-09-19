@@ -2,6 +2,7 @@
    data gateway between pandas and beancount
 '''
 
+import datetime
 import beancount
 from beancount.query import query
 
@@ -112,5 +113,8 @@ class BeanPandas():
             return return_val
         elif col_type is beancount.core.position.Position:
             amount, curr  = val[0]
-            return (amount, curr)
-
+            return (float(amount), curr)
+        elif col_type is datetime.date:
+            return val
+        else:
+            return val
