@@ -38,11 +38,19 @@ class BeanPandas():
             return None
         self._split_columns(df_data, col_names)
 
-
-        return(col_names,col_types,df_data)
+        return pd.DataFrame(df_data, columns=col_names)
+        #return(col_names,col_types,df_data)
 
     def _split_columns(self, df_data, col_names):
-        #split columns with colmplex values (tuples)
+        '''split columns with colmplex values (tuples)
+        '''
+        def get_subitem(item, item_no):
+            if isinstance(item, tuple):
+                return item[item_no]
+            else:
+                return item
+
+        #analyze dataset and collect indexes for columns with tuples
         column_index_tuple = {}
         for i, col in enumerate(df_data[0]):
             for r in df_data:
@@ -56,13 +64,11 @@ class BeanPandas():
         for col in indexes:
             for r in df_data:
                 val = r[col]
-                if val is None:
-                    continue
                 for item_no in range(column_index_tuple[col]):
                     if item_no == 0:
-                        r[col] = val[item_no]
+                        r[col] = get_subitem(val, item_no)
                     else:
-                        r.insert(col+item_no, val[item_no])
+                        r.insert(col+item_no, get_subitem(val, item_no))
                         if col not in indexes_done:
                             col_names.insert(col+item_no,'{}_{}'.format(col_names[col],item_no))
                             indexes_done.append(col)
