@@ -4,6 +4,7 @@ For tagged transactions, replace account with provided.
 base code     : divert_account.py pluging by Martin Blais
 what modified : - check for type of account for effected transaction is removed (i.e any account is allowed)
                 - only postings with meta 'divert' == True are affected
+                - extra parameters are treated as new meta, attached to updated entries
 
 scenario      : 2 files maintained, 1st - with 'general' payments records,
 second - with details for particulars job/project, such as this:
@@ -59,19 +60,21 @@ def replace_account(entries, options_map, config_str):
         raise RuntimeError("Invalid plugin configuration: should be a single dict.")
     tag = config_obj['tag']
     replacement_account = config_obj['account']
+    config_obj.pop('tag')
+    config_obj.pop('account')
 
 
     new_entries = []
     errors = []
     for entry in entries:
         if isinstance(entry, Transaction) and tag in entry.tags:
-            entry = replace_acc(entry, replacement_account)
+            entry = replace_acc(entry, replacement_account, config_obj)
         new_entries.append(entry)
 
     return new_entries, errors
 
 
-def replace_acc(entry, replacement_account):
+def replace_acc(entry, replacement_account, meta):
     """Replace the Expenses accounts from the entry.
 
     Args:
@@ -83,7 +86,9 @@ def replace_acc(entry, replacement_account):
     new_postings = []
     for posting in entry.postings:
         if posting.meta.get('divert', False):
+            meta.update({'diverted_account': posting.account})
             posting = posting._replace(account=replacement_account,
-                                       meta={'diverted_account': posting.account})
+                    meta = meta)
+#                                       meta={'diverted_account': posting.account})
         new_postings.append(posting)
     return entry._replace(postings=new_postings)

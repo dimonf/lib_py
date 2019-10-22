@@ -94,7 +94,8 @@ def _drill(self, search_val):
     recs = self._source_df.query(query_spec)
     #print totals if more than 1 record
     if len(recs) > 1:
-        return recs.pipe(_totals)
+        #return recs.pipe(_totals)
+        return recs.ex.totals()
         #return recs.totals()
 
     return recs
