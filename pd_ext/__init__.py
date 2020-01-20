@@ -59,7 +59,8 @@ class DfExtensions(object):
             else:
                 df_t.loc[:,'TOTAL:'] = t_total
 
-        return df_t.fillna('--')
+        #return df_t.fillna('--')
+        return df_t
 
     def rtotal(self, column):
         '''append column with running total for selected columns in a dataframe'''
