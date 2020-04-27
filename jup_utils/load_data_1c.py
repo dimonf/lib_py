@@ -25,6 +25,8 @@ DTYPES = {
         'ccenter' : 'str',
         'curr'    : 'str',
         'date'    : 'str',
+        'uuid'    : 'str',
+        'id'      : 'str',
         'dtct'    : 'str',
         'period'  : 'str',
         }
