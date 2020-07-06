@@ -17,6 +17,12 @@ def _regex_select_groupby(self, regex_pattern):
         if r_search.search(t):
             return (r)
 
+def _peek_context(self, id, n=5):
+    '''get set of records surrounding target record with index 'id'
+    '''
+    i = self.index.get_loc(id)
+    return self.iloc[max(i-n, 0) : min(i+n+1, len(df))]
+
 @pd.api.extensions.register_dataframe_accessor("ex")
 class DfExtensions(object):
     def __init__(self, pandas_obj):
@@ -100,6 +106,9 @@ def pd_infect():
         {'class': pd.core.groupby.DataFrameGroupBy,
          'attribute': 'rr',
          'function': _regex_select_groupby},
+        {'class': pd.DataFrame,
+         'attribute': 'peek',
+         'function': _peek_context}
     ]
 
     for f in functions:

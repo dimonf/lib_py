@@ -4,13 +4,14 @@
 
 import datetime
 import beancount
+from beancount import loader
 from beancount.query import query
 
 import pandas as pd
 
 class BeanPandas():
     def __init__(self, input_file):
-        self._entries, self._errors, self._options_map = beancount.loader.load_file(input_file)
+        self._entries, self._errors, self._options_map = loader.load_file(input_file)
 
     def query(self, query_str, *args):
         '''read doc for run_query in /usr/lib/python3.7/site-packages/beancount/query/query.py
