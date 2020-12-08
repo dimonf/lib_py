@@ -19,7 +19,7 @@ class BeanPandas():
         '''
         return query.run_query(self._entries, self._options_map, query_str, *args)
 
-    def query2pd(self, query_str, *args):
+    def query2pd(self, query_str, *args, columns={}):
         '''
         same functionality as 'query' method; output is converted to proper DataFrame
         Limitations:
@@ -39,6 +39,12 @@ class BeanPandas():
         if not df_data:
             return None
         self._split_columns(df_data, col_names)
+
+        if len(col_names) == len(columns):
+            #override column names with provided as argument
+            col_names = columns
+        else:
+            raise AttributeError('length mismatch (for column names)')
 
         return pd.DataFrame(df_data, columns=col_names)
         #return(col_names,col_types,df_data)
