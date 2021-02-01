@@ -8,8 +8,9 @@ import sys
 ''' use example:
     acc = IMAP_account(host='some.com',user='toster@some.com',password='1234')
     acc.list_mboxes()
+    acc.con.select('INBOX')
     s_result = acc.search('(SUBJECT "invoice" SINCE "20-dec-2016" BEFORE "31-jan-2018" FROM xyz@otto.com")')
-    acc.b2dict_headers(uuids=s_result[:-2], attachments=True)
+    acc.b2dict_headers(uids=s_result[:-2], attachments=True)
     acc.download_attachments(uids=s_result)
 '''
 class IMAP_account():
