@@ -44,7 +44,9 @@ class BeanPandas():
             #override column names with provided as argument
             col_names = columns
         else:
-            raise AttributeError('length mismatch (for column names)')
+            err_msg = [col_names, columns]
+            err_msg = "column names length mismatch:\n"+str([col_names, columns])
+            raise AttributeError(err_msg)
 
         return pd.DataFrame(df_data, columns=col_names)
         #return(col_names,col_types,df_data)
