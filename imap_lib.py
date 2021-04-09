@@ -1,4 +1,4 @@
-import datetime
+import datetime, dateutil
 import email, email.parser
 import imaplib
 import os
@@ -21,6 +21,7 @@ class IMAP_account():
     re_att_filesize = re.compile(r'base64["\s]+([0-9]+)')
     re_att = re.compile(r'base64["\s]+(?P<size>[0-9]+).+?filename["\s]+(?P<name>[^"]+)')
     re_box = re.compile(r'\((?P<flags>.*?)\) "(?P<delimiter>.*)" (?P<name>.*)')
+    re_bad_symbols = re.compile(r'[^a-zA-Z0-9.\-_]+')
 
     def __init__(self, host, user, password):
         self._host, self._user, self._password, self._box = ['']*4
@@ -80,8 +81,10 @@ class IMAP_account():
            con.uid('fetch',uids,'(BODY.PEEK[HEADER] UID BODYSTRUCTURE)')'''
         #either uids or msg_data shall be available
         if not msg_data:
-            if not uids:
+            if uids == None:
                 raise Exception ('either msg_data or uids shall be provided')
+            elif len(uids) == 0:
+                return []
             ok, msg_data = self.con.uid('fetch', self.format_uids(uids),
                 '(BODY.PEEK[HEADER] UID BODYSTRUCTURE)')
         out = []
@@ -98,7 +101,10 @@ class IMAP_account():
             if isinstance(response_part, tuple):
                 msg_str= {}
                 #get message uid (stored in first part of tuple)
-                msg_str['uid'] = self.re_num_uid.match(response_part[0].decode()).group('uid')
+                try:
+                    msg_str['uid'] = self.re_num_uid.match(response_part[0].decode()).group('uid')
+                except AttributeError:
+                    msg_str['uid'] = "N/A"
                 #parse headers (stored in second part of tuple)
                 email_parser = email.parser.BytesFeedParser()
                 email_parser.feed(response_part[1])
@@ -114,14 +120,21 @@ class IMAP_account():
                 msg_str['attachments'] = self.re_att.findall(response_part.decode())
         return out
 
-    def download_attachments(self, uids, dir=None, dry_run=False):
+    def download_attachments(self, uids, dir=None, dry_run=False, fn_prefix_date=False):
+        '''
+           fn_prefix_date: if true, prepend filename for attachment with date YYYY-MM-DD
+        '''
         #check if dir exists
+        fn_prefix = ''
         dir = self.check_dir(default='~/Downloads/attachments', tag='mail-att', dir=dir)
         if not isinstance(uids, list):
             uid = [uids]
         for uid in uids:
             ok, data = self.con.uid('fetch', str(uid), '(RFC822)')
             m = email.message_from_bytes(data[0][1])
+            if fn_prefix_date:
+                tmp_date = dateutil.parser.parse(m.get('date'))
+                fn_prefix = f"{tmp_date.strftime('%Y-%m-%d')}_{str(uid)}_"
             if m.get_content_maintype() != 'multipart':
                 continue
             for part in m.walk():
@@ -130,7 +143,9 @@ class IMAP_account():
                 if part.get('Content-Disposition') is None:
                     continue
 
-                file_name = part.get_filename()
+                file_name_att = self.sanitize_str(part.get_filename())
+                file_name = f'{fn_prefix}{file_name_att}'
+                file_name = self.sanitize_str(f'{fn_prefix}{part.get_filename()}'.strip())
                 file_path = os.path.join(dir, file_name)
                 if os.path.isfile(file_path):
                     file_path = os.path.join(dir,'{}_{}'.format(uid,file_name))
@@ -160,6 +175,8 @@ class IMAP_account():
     def extra_formatting(self, header, val):
         if header == ['date']:
             return self.get_date(val)
+        elif header == ['subject']:
+            return str(email.header.make_header(email.header.decode_header(val)))
         return val
 
     def get_date(self, data):
@@ -218,6 +235,10 @@ class IMAP_account():
                 continue
             elif v:
                 self.par[k] = v
+
+    def sanitize_str(self, l):
+        return re.sub(self.re_bad_symbols,'_',l)
+
 
 '''
 search by Message-ID: (HEADER Message-ID <xxxxxxxxxx>
